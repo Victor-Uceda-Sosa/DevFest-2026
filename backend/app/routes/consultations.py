@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from app.auth.dependencies import get_current_user
-from app.database import supabase
+from app.database import get_supabase
 from app.models.consultation import (
     ConsultationCreate,
     ConsultationResponse,
@@ -63,7 +63,7 @@ async def start_consultation(
         consultation_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
 
-        result = supabase.table("consultations").insert(
+        result = get_supabase().table("consultations").insert(
             {
                 "id": consultation_id,
                 "user_id": user.id,
@@ -110,7 +110,7 @@ async def upload_audio(
         duration = transcription_result.get("duration_seconds", 0)
 
         # Update consultation with transcript
-        update_result = supabase.table("consultations").update(
+        update_result = get_supabase().table("consultations").update(
             {
                 "transcript": transcript,
                 "duration_seconds": duration,
@@ -144,7 +144,7 @@ async def upload_audio(
 async def get_consultation(consultation_id: str, user=Depends(get_current_user)):
     """Get consultation details"""
     try:
-        result = supabase.table("consultations").select("*").eq(
+        result = get_supabase().table("consultations").select("*").eq(
             "id", consultation_id
         ).eq("user_id", user.id).execute()
 
@@ -168,7 +168,7 @@ async def get_consultation(consultation_id: str, user=Depends(get_current_user))
 async def list_consultations(user=Depends(get_current_user)):
     """List all consultations for current user"""
     try:
-        result = supabase.table("consultations").select("*").eq(
+        result = get_supabase().table("consultations").select("*").eq(
             "user_id", user.id
         ).order("created_at", desc=True).execute()
 
