@@ -1,125 +1,112 @@
-"""
-ElevenLabs service for speech-to-text and text-to-speech.
-Uses direct HTTP API calls instead of SDK for better reliability.
-"""
-from typing import Optional
 import httpx
-from app.config import settings
+import assemblyai as aai
+from app.config import get_settings
+import io
+
+settings = get_settings()
+aai.settings.api_key = settings.assemblyai_api_key
 
 
 class ElevenLabsService:
-    """Service for ElevenLabs STT and TTS operations via HTTP API."""
-    
+    """Service for interacting with ElevenLabs API and transcription"""
+
     def __init__(self):
-        """Initialize ElevenLabs service."""
         self.api_key = settings.elevenlabs_api_key
-        self.voice_id = settings.elevenlabs_voice_id
-        self.base_url = "https://api.elevenlabs.io/v1"
-    
-    async def transcribe_audio(self, audio_data: bytes) -> str:
+        self.base_url = "https://api.elevenlabs.io"
+        self.headers = {"xi-api-key": self.api_key}
+
+    async def transcribe_audio(self, audio_data: bytes) -> dict:
         """
-        Transcribe audio to text using ElevenLabs Speech-to-Text API.
-        
+        Transcribe audio file using AssemblyAI API
+
         Args:
-            audio_data: Raw audio file bytes
-            
+            audio_data: Raw audio bytes (webm format)
+
         Returns:
-            Transcribed text
-            
-        Raises:
-            Exception: If transcription fails
+            Dictionary with transcription result
         """
         try:
-            url = f"{self.base_url}/speech-to-text"
-            headers = {
-                "xi-api-key": self.api_key,
-            }
-            
-            files = {
-                "audio": ("audio.mp3", audio_data, "audio/mpeg")
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(url, headers=headers, files=files)
-                response.raise_for_status()
-                
-                result = response.json()
-                transcription = result.get("text", "")
-                
-                if not transcription:
-                    raise Exception("Empty transcription received")
-                
-                return transcription
-                
-        except httpx.HTTPStatusError as e:
-            print(f"ElevenLabs transcription HTTP error: {e.response.status_code} - {e.response.text}")
-            raise Exception(f"Failed to transcribe audio: {e.response.status_code}")
-        except Exception as e:
-            print(f"ElevenLabs transcription error: {str(e)}")
-            raise Exception(f"Failed to transcribe audio: {str(e)}")
-    
-    async def generate_speech(self, text: str, voice_id: Optional[str] = None) -> bytes:
-        """
-        Generate speech from text using ElevenLabs TTS API.
-        
-        Args:
-            text: Text to convert to speech
-            voice_id: Optional voice ID (uses default if not provided)
-            
-        Returns:
-            Audio bytes (MP3 format)
-            
-        Raises:
-            Exception: If speech generation fails
-        """
-        try:
-            voice_id = voice_id or self.voice_id
-            url = f"{self.base_url}/text-to-speech/{voice_id}"
-            
-            headers = {
-                "xi-api-key": self.api_key,
-                "Content-Type": "application/json"
-            }
-            
-            payload = {
-                "text": text,
-                "model_id": "eleven_monolingual_v1",
-                "voice_settings": {
-                    "stability": 0.5,
-                    "similarity_boost": 0.75,
-                    "style": 0.0,
-                    "use_speaker_boost": True
+            # Create transcriber with universal-3-pro model
+            transcriber = aai.Transcriber()
+
+            # AssemblyAI expects file path or URL, so we'll upload the audio
+            # Convert bytes to file-like object
+            audio_file = io.BytesIO(audio_data)
+
+            # Configure transcription with speech models (list)
+            config = aai.TranscriptionConfig(speech_models=["universal-2"])
+
+            # Transcribe using AssemblyAI
+            transcript = transcriber.transcribe(audio_file, config=config)
+
+            if transcript.status == aai.TranscriptStatus.error:
+                return {
+                    "success": False,
+                    "error": transcript.error,
                 }
+
+            return {
+                "transcript": transcript.text,
+                "success": True,
+                "duration_seconds": 0,
             }
-            
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                
-                # Response is audio bytes
-                audio_bytes = response.content
-                return audio_bytes
-                
-        except httpx.HTTPStatusError as e:
-            print(f"ElevenLabs TTS HTTP error: {e.response.status_code} - {e.response.text}")
-            raise Exception(f"Failed to generate speech: {e.response.status_code}")
         except Exception as e:
-            print(f"ElevenLabs TTS error: {str(e)}")
-            raise Exception(f"Failed to generate speech: {str(e)}")
-    
-    async def generate_speech_async(self, text: str, voice_id: Optional[str] = None) -> bytes:
+            print(f"Transcription error: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+            }
+
+    async def get_voices(self) -> list:
         """
-        Async wrapper for generate_speech (already async).
-        
+        Get list of available voices from ElevenLabs
+        """
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"{self.base_url}/v1/voices",
+                    headers=self.headers,
+                    timeout=10.0,
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data.get("voices", [])
+        except Exception as e:
+            print(f"Error getting voices: {e}")
+            return []
+
+    async def generate_voice(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> bytes:
+        """
+        Generate voice from text using ElevenLabs
+
         Args:
             text: Text to convert to speech
-            voice_id: Optional voice ID
-            
+            voice_id: ElevenLabs voice ID (default is "Bella")
+
         Returns:
             Audio bytes
         """
-        return await self.generate_speech(text, voice_id)
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.base_url}/v1/text-to-speech/{voice_id}",
+                    headers=self.headers,
+                    json={
+                        "text": text,
+                        "model_id": "eleven_monolingual_v1",
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.75,
+                        },
+                    },
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+                return response.content
+        except Exception as e:
+            print(f"Error generating voice: {e}")
+            return b""
 
 
-# Global service instance
+# Initialize service
 elevenlabs_service = ElevenLabsService()

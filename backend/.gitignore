@@ -16,3 +16,5 @@ build/
 *.swo
 *~
 .DS_Store
+backend/venv/
+backend/app/__pycache__/
