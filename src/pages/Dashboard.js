@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
@@ -41,13 +42,15 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Feature grid - coming soon */}
+        {/* Feature grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[
             {
               name: 'Doctor-Patient Consultations',
               description: 'Practice with simulated patients via ElevenLabs',
               icon: '🩺',
+              available: true,
+              route: '/consultations',
             },
             {
               name: 'Clinical Reasoning',
@@ -84,9 +87,18 @@ const Dashboard = () => {
                 {feature.name}
               </h3>
               <p className="text-gray-600 text-sm">{feature.description}</p>
-              <button className="mt-4 inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-md text-blue-600 hover:bg-blue-50">
-                Coming Soon
-              </button>
+              {feature.available ? (
+                <button
+                  onClick={() => navigate(feature.route)}
+                  className="mt-4 inline-flex items-center px-3 py-2 border border-blue-600 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  Open
+                </button>
+              ) : (
+                <button className="mt-4 inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-600 cursor-not-allowed">
+                  Coming Soon
+                </button>
+              )}
             </div>
           ))}
         </div>

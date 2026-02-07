@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
 
   // Listen to auth state changes
   useEffect(() => {
-    const { data: subscription } = authService.onAuthStateChange(
+    const subscription = authService.onAuthStateChange(
       (event, session) => {
         setSession(session);
         if (session) {
@@ -52,7 +52,9 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => {
-      subscription?.unsubscribe();
+      if (subscription?.data?.subscription) {
+        subscription.data.subscription.unsubscribe();
+      }
     };
   }, []);
 

@@ -34,7 +34,7 @@ async def health_check():
     return {"status": "healthy"}
 
 
-# Import and include routers (add as features are implemented)
-# from app.routes import auth, elevenlabs, k2_reasoning
-# app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-# app.include_router(elevenlabs.router, prefix="/api/consultations", tags=["consultations"])
+# Import and include routers
+from app.routes import consultations
+
+app.include_router(consultations.router, prefix="/api/consultations", tags=["consultations"])
