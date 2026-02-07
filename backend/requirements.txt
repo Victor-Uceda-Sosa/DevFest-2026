@@ -9,3 +9,4 @@ python-multipart==0.0.17
 elevenlabs==1.10.0
 stripe==11.1.1
 aiofiles==24.1.0
+PyJWT==2.11.0

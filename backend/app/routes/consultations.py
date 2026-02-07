@@ -59,10 +59,14 @@ async def start_consultation(
 ):
     """Start a new consultation session"""
     try:
+        print(f"DEBUG: Starting consultation for user {user.id}")
+        print(f"DEBUG: Case ID: {consultation.case_id}")
+
         # Create consultation record in database
         consultation_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
 
+        print(f"DEBUG: Attempting to insert into database")
         result = get_supabase().table("consultations").insert(
             {
                 "id": consultation_id,
@@ -74,6 +78,7 @@ async def start_consultation(
             }
         ).execute()
 
+        print(f"DEBUG: Insert result: {result}")
         if result.data:
             return result.data[0]
         else:
@@ -81,7 +86,12 @@ async def start_consultation(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to create consultation",
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"ERROR: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error starting consultation: {str(e)}",

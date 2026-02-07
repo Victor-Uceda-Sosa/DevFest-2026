@@ -7,12 +7,14 @@ settings = get_settings()
 _supabase_client = None
 
 def get_supabase() -> Client:
+    """Get Supabase client using service role key (bypasses RLS)"""
     global _supabase_client
     if _supabase_client is None:
         try:
+            # Use service role key for backend operations (bypasses RLS)
             _supabase_client = create_client(
                 supabase_url=settings.supabase_url,
-                supabase_key=settings.supabase_key,
+                supabase_key=settings.supabase_service_key,
             )
         except Exception as e:
             print(f"Warning: Failed to initialize Supabase: {e}")
