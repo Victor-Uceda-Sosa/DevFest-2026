@@ -26,15 +26,18 @@ class ElevenLabsService:
             Dictionary with transcription result
         """
         try:
-            # Create transcriber
+            # Create transcriber with universal-3-pro model
             transcriber = aai.Transcriber()
 
             # AssemblyAI expects file path or URL, so we'll upload the audio
             # Convert bytes to file-like object
             audio_file = io.BytesIO(audio_data)
 
+            # Configure transcription with speech model
+            config = aai.TranscriptionConfig(speech_model=aai.SpeechModel.universal_3_pro)
+
             # Transcribe using AssemblyAI
-            transcript = transcriber.transcribe(audio_file)
+            transcript = transcriber.transcribe(audio_file, config=config)
 
             if transcript.status == aai.TranscriptStatus.error:
                 return {
