@@ -70,9 +70,23 @@ async def interact(
             # Read audio data
             audio_data = await audio_file.read()
             
-            # Transcribe audio
+            # Transcribe audio using AssemblyAI
             try:
-                student_input_text = await elevenlabs_service.transcribe_audio(audio_data)
+                transcription_result = await elevenlabs_service.transcribe_audio(audio_data)
+                if not transcription_result.get("success"):
+                    error_msg = transcription_result.get("error", "Unknown transcription error")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Failed to transcribe audio: {error_msg}"
+                    )
+                student_input_text = transcription_result.get("transcript", "")
+                if not student_input_text:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Transcription resulted in empty text"
+                    )
+            except HTTPException:
+                raise
             except Exception as e:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -118,22 +132,29 @@ async def interact(
                 detail=f"Failed to generate response: {str(e)}"
             )
         
-        # Generate speech for response
+        # Generate speech for response (using ElevenLabs TTS)
         response_audio_url = None
         try:
-            response_audio_bytes = await elevenlabs_service.generate_speech_async(tutor_response)
+            from app.config import get_settings
+            settings = get_settings()
             
-            # Upload response audio
-            response_audio_filename = f"tutor_{uuid.uuid4()}.mp3"
-            response_audio_url = await supabase_service.upload_audio(
-                file_data=response_audio_bytes,
-                session_id=session_uuid,
-                filename=response_audio_filename,
-                content_type="audio/mpeg"
+            response_audio_bytes = await elevenlabs_service.generate_voice(
+                text=tutor_response,
+                voice_id=settings.elevenlabs_voice_id
             )
+            
+            if response_audio_bytes:
+                # Upload response audio to Supabase storage
+                response_audio_filename = f"tutor_{uuid.uuid4()}.mp3"
+                response_audio_url = await supabase_service.upload_audio(
+                    file_data=response_audio_bytes,
+                    session_id=session_uuid,
+                    filename=response_audio_filename,
+                    content_type="audio/mpeg"
+                )
         except Exception as e:
             print(f"Warning: Failed to generate/upload response audio: {str(e)}")
-            # Continue without audio
+            # Continue without audio - text response is still returned
         
         # Save interaction to database
         try:
