@@ -33,8 +33,8 @@ class ElevenLabsService:
             # Convert bytes to file-like object
             audio_file = io.BytesIO(audio_data)
 
-            # Configure transcription with speech model
-            config = aai.TranscriptionConfig(speech_model="best")
+            # Configure transcription with speech models (list)
+            config = aai.TranscriptionConfig(speech_models=["best"])
 
             # Transcribe using AssemblyAI
             transcript = transcriber.transcribe(audio_file, config=config)
