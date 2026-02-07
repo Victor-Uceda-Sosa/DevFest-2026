@@ -70,12 +70,15 @@ const ConsultationInterface = () => {
         }
       );
 
-      setTranscript(response.data.transcript);
+      console.log('Response:', response.data);
+      const transcriptText = response.data.transcript || 'No transcript returned';
+      console.log('Transcript:', transcriptText);
+      setTranscript(transcriptText);
+      setUploading(false);
       toast.success('Audio uploaded and transcribed!');
     } catch (error) {
       toast.error('Failed to upload audio');
       console.error(error);
-    } finally {
       setUploading(false);
     }
   };
@@ -85,6 +88,8 @@ const ConsultationInterface = () => {
     setConsultation(null);
     setTranscript(null);
   };
+
+  console.log('RENDER: consultation=', consultation, 'transcript=', transcript);
 
   return (
     <div className="space-y-6">
@@ -155,8 +160,10 @@ const ConsultationInterface = () => {
       )}
 
       {/* Transcript Display */}
-      {transcript && (
-        <div className="space-y-4">
+      {transcript ? (
+        <>
+          {console.log('SHOWING TRANSCRIPT SECTION')}
+          <div className="space-y-4">
           <div className="bg-green-50 border-l-4 border-green-600 p-4">
             <h3 className="text-lg font-semibold text-green-800">
               ✓ Transcription Complete
@@ -195,6 +202,9 @@ const ConsultationInterface = () => {
             </button>
           </div>
         </div>
+        </>
+      ) : (
+        console.log('TRANSCRIPT NOT SET')
       )}
     </div>
   );
