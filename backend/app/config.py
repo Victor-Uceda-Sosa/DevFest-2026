@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     # API Keys
     elevenlabs_api_key: str = ""
+    assemblyai_api_key: str = ""
     k2_api_key: str = ""
     k2_api_url: str = ""
     featherless_api_key: str = ""

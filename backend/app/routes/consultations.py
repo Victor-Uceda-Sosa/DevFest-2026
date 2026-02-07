@@ -103,21 +103,37 @@ async def upload_audio(
     consultation_id: str, file: UploadFile = File(...), user=Depends(get_current_user)
 ):
     """Upload audio and get transcription"""
+    print(f"\n=== UPLOAD AUDIO ENDPOINT CALLED ===")
+    print(f"Consultation ID: {consultation_id}")
+    print(f"User ID: {user.id}")
+    print(f"File: {file.filename}, Content-Type: {file.content_type}")
+
     try:
         # Read audio file
         audio_data = await file.read()
+        print(f"DEBUG: Received audio file, size: {len(audio_data)} bytes")
 
-        # Transcribe using ElevenLabs
+        # Transcribe using OpenAI Whisper
         transcription_result = await elevenlabs_service.transcribe_audio(audio_data)
+        print(f"DEBUG: Transcription result: {transcription_result}")
 
         if not transcription_result.get("success"):
+            error_msg = transcription_result.get("error", "Unknown error")
+            print(f"ERROR: Transcription failed: {error_msg}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Failed to transcribe audio",
+                detail=f"Failed to transcribe audio: {error_msg}",
             )
 
         transcript = transcription_result.get("transcript", "")
         duration = transcription_result.get("duration_seconds", 0)
+
+        # Print transcript to terminal
+        print("\n" + "="*80)
+        print(f"TRANSCRIPTION RESULT:")
+        print(f"Duration: {duration} seconds")
+        print(f"Transcript: {transcript}")
+        print("="*80 + "\n")
 
         # Update consultation with transcript
         update_result = get_supabase().table("consultations").update(

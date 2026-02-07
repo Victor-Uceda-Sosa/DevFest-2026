@@ -1,11 +1,14 @@
 import httpx
+import assemblyai as aai
 from app.config import get_settings
+import io
 
 settings = get_settings()
+aai.settings.api_key = settings.assemblyai_api_key
 
 
 class ElevenLabsService:
-    """Service for interacting with ElevenLabs API"""
+    """Service for interacting with ElevenLabs API and transcription"""
 
     def __init__(self):
         self.api_key = settings.elevenlabs_api_key
@@ -14,27 +17,38 @@ class ElevenLabsService:
 
     async def transcribe_audio(self, audio_data: bytes) -> dict:
         """
-        Transcribe audio file using ElevenLabs API
+        Transcribe audio file using AssemblyAI API
 
         Args:
-            audio_data: Raw audio bytes
+            audio_data: Raw audio bytes (webm format)
 
         Returns:
             Dictionary with transcription result
         """
         try:
-            async with httpx.AsyncClient() as client:
-                # ElevenLabs doesn't have a dedicated transcription API
-                # We'll use a placeholder response for now
-                # In production, you'd use a speech-to-text service like Deepgram
+            # Create transcriber
+            transcriber = aai.Transcriber()
 
-                # For now, return a mock response
+            # AssemblyAI expects file path or URL, so we'll upload the audio
+            # Convert bytes to file-like object
+            audio_file = io.BytesIO(audio_data)
+
+            # Transcribe using AssemblyAI
+            transcript = transcriber.transcribe(audio_file)
+
+            if transcript.status == aai.TranscriptStatus.error:
                 return {
-                    "transcript": "Mock transcription from ElevenLabs",
-                    "success": True,
-                    "duration_seconds": 30,
+                    "success": False,
+                    "error": transcript.error,
                 }
+
+            return {
+                "transcript": transcript.text,
+                "success": True,
+                "duration_seconds": 0,
+            }
         except Exception as e:
+            print(f"Transcription error: {e}")
             return {
                 "success": False,
                 "error": str(e),
