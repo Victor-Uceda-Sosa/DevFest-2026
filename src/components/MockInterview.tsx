@@ -1,389 +1,245 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
 import { User, Bot, Play, RotateCcw, CheckCircle2, AlertCircle, Sparkles, Square, Loader2, Mic, Send } from 'lucide-react';
 import { Badge } from './ui/badge';
-import { authService } from '../services/authService';
+import { AudioRecorder, formatRecordingTime } from '../utils/audioRecorder';
+import interviewApi from '../services/interviewApi';
+import { CasePublic, SessionStartResponse, SessionCompleteResponse } from '../types/api';
 
 interface Message {
   role: 'patient' | 'student';
   content: string;
+  audioUrl?: string | null;
 }
-
-interface CaseData {
-  case_id: string;
-  case_title: string;
-  description: string;
-  difficulty: string;
-}
-
-interface Scenario extends CaseData {
-  id: string;
-  title: string;
-  patient: string;
-  chiefComplaint: string;
-  color: string;
-}
-
-const initialResponses: Record<string, string[]> = {
-  case_001: [
-    "Hello, doctor. I've been having this terrible chest pain that started about 2 hours ago.",
-    "It feels like pressure, like someone is sitting on my chest. It's really uncomfortable.",
-    "It's right here in the center of my chest. It sometimes radiates to my left arm.",
-    "No, I've never had anything like this before. I'm really worried.",
-  ],
-  case_002: [
-    "Hi doctor, I have this really bad headache that won't go away.",
-    "It started yesterday morning. It's on both sides of my head, throbbing.",
-    "Yes, I'm sensitive to light and feel a bit nauseous.",
-    "I've tried ibuprofen but it didn't help much.",
-  ],
-  case_003: [
-    "Doctor, I've been having stomach pain for the past 6 hours.",
-    "It's in the upper right part of my stomach. It's sharp and comes and goes.",
-    "I threw up once this morning. I also feel very nauseated.",
-    "I ate some fried food last night at a restaurant.",
-  ],
-  case_004: [
-    "Doctor, I've been experiencing episodes of dizziness and even blacked out briefly today.",
-    "It happened when I stood up from sitting. I felt lightheaded and then everything went black.",
-    "I have a history of hypertension but I haven't been taking my medications regularly.",
-    "I also feel fatigued and have been short of breath lately.",
-  ],
-  case_005: [
-    "Doctor, my child has been running a fever since this morning.",
-    "The temperature reached 38.5 degrees Celsius. There's also this strange rash all over the body.",
-    "Yes, the rash appeared after the fever started. It's red and slightly raised.",
-    "There have been other sick children at school recently.",
-  ],
-};
-
-const HARDCODED_SCENARIOS: Scenario[] = [
-  {
-    case_id: 'case_001',
-    case_title: 'Acute Chest Pain',
-    description: 'A 45-year-old male presents with acute chest pain for 2 hours',
-    difficulty: 'intermediate',
-    id: 'case_001',
-    title: 'Acute Chest Pain',
-    patient: 'John Doe, 45M',
-    chiefComplaint: 'Chest pain for 2 hours',
-    color: 'red',
-  },
-  {
-    case_id: 'case_002',
-    case_title: 'Persistent Cough',
-    description: 'A 52-year-old female with a 3-week persistent cough',
-    difficulty: 'intermediate',
-    id: 'case_002',
-    title: 'Persistent Cough',
-    patient: 'Sarah Smith, 52F',
-    chiefComplaint: 'Persistent cough for 3 weeks',
-    color: 'yellow',
-  },
-  {
-    case_id: 'case_003',
-    case_title: 'Abdominal Pain',
-    description: 'A 28-year-old female presenting with acute abdominal pain',
-    difficulty: 'beginner',
-    id: 'case_003',
-    title: 'Abdominal Pain',
-    patient: 'Emma Wilson, 28F',
-    chiefComplaint: 'Acute abdominal pain',
-    color: 'orange',
-  },
-  {
-    case_id: 'case_004',
-    case_title: 'Dizziness and Syncope',
-    description: 'A 68-year-old male with episodes of dizziness and brief syncope',
-    difficulty: 'advanced',
-    id: 'case_004',
-    title: 'Dizziness and Syncope',
-    patient: 'Michael Brown, 68M',
-    chiefComplaint: 'Dizziness and brief fainting',
-    color: 'blue',
-  },
-  {
-    case_id: 'case_005',
-    case_title: 'Fever and Rash',
-    description: 'A 6-year-old child with fever and generalized rash',
-    difficulty: 'intermediate',
-    id: 'case_005',
-    title: 'Fever and Rash',
-    patient: 'Tommy Anderson, 6M',
-    chiefComplaint: 'Fever and rash',
-    color: 'purple',
-  },
-];
 
 export function MockInterview() {
-  const [scenarios] = useState<Scenario[]>(HARDCODED_SCENARIOS);
-  const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  // State management
+  const [cases, setCases] = useState<CasePublic[]>([]);
+  const [loadingCases, setLoadingCases] = useState(true);
+  const [selectedCase, setSelectedCase] = useState<CasePublic | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentInput, setCurrentInput] = useState('');
-  const [interviewStep, setInterviewStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  
+  // Voice recording state
+  const [audioRecorder] = useState(() => new AudioRecorder());
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [consultationId, setConsultationId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{
-    overall: string;
-    strengths: string[];
-    improvements: string[];
-  } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  
+  // Feedback state
+  const [feedback, setFeedback] = useState<SessionCompleteResponse | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  
+  // Error state
+  const [error, setError] = useState<string | null>(null);
 
-  // Voice recording functions
+  // Load cases on component mount
+  useEffect(() => {
+    loadCases();
+  }, []);
+
+  const loadCases = async () => {
+    try {
+      setLoadingCases(true);
+      setError(null);
+      const fetchedCases = await interviewApi.getCases();
+      setCases(fetchedCases);
+    } catch (err: any) {
+      console.error('Error loading cases:', err);
+      setError(err.message || 'Failed to load clinical cases. Please refresh the page.');
+    } finally {
+      setLoadingCases(false);
+    }
+  };
+
+  // Start a new interview session
+  const startInterview = async (caseData: CasePublic) => {
+    try {
+      setError(null);
+      setIsProcessing(true);
+      
+      // Start session with backend
+      const response: SessionStartResponse = await interviewApi.startSession({
+        case_id: caseData.id,
+        student_id: 'demo-student-' + Date.now(), // In production, use real student ID
+      });
+
+      setSelectedCase(caseData);
+      setSessionId(response.session_id);
+      
+      // Display initial greeting from patient
+      setMessages([{
+        role: 'patient',
+        content: response.initial_greeting,
+      }]);
+      
+      setIsComplete(false);
+      setFeedback(null);
+    } catch (err: any) {
+      console.error('Error starting interview:', err);
+      setError(err.message || 'Failed to start interview. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Voice recording handlers
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        setAudioBlob(blob);
-      };
-
-      recorder.start();
-      setMediaRecorder(recorder);
+      setError(null);
+      setAudioBlob(null);
+      await audioRecorder.start((seconds) => setRecordingTime(seconds));
       setIsRecording(true);
-      setRecordingTime(0);
-
-      const timer = setInterval(() => {
-        setRecordingTime((t) => t + 1);
-      }, 1000);
-
-      recorder.onstart = () => {
-        (recorder as any).timerInterval = timer;
-      };
-    } catch (error) {
-      alert('Microphone access denied');
+    } catch (err: any) {
+      console.error('Error starting recording:', err);
+      setError('Microphone access denied. Please allow microphone access to use voice recording.');
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
-      setIsRecording(false);
-      if ((mediaRecorder as any).timerInterval) {
-        clearInterval((mediaRecorder as any).timerInterval);
-      }
-    }
-  };
-
-  const sendAudio = async () => {
-    if (!audioBlob) return;
-
-    setIsTranscribing(true);
+  const stopRecording = async () => {
     try {
-      // Get backend URL from environment
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
-
-      // Get auth token from Supabase session
-      const session = await authService.getCurrentSession();
-      const authToken = session?.access_token;
-
-      if (!authToken) {
-        alert('Not authenticated. Please login first.');
-        return;
-      }
-
-      let currentConsultationId = consultationId;
-
-      // If no consultation exists, create one
-      if (!currentConsultationId) {
-        try {
-          const startResponse = await fetch(`${backendUrl}/api/consultations/start`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({
-              case_id: selectedScenario!.case_id,
-              case_title: selectedScenario!.title,
-            }),
-          });
-
-          if (!startResponse.ok) {
-            throw new Error(`Failed to create consultation: ${startResponse.statusText}`);
-          }
-
-          const consultationData = await startResponse.json();
-          currentConsultationId = consultationData.id;
-          setConsultationId(currentConsultationId);
-        } catch (error) {
-          console.error('Error creating consultation:', error);
-          alert('Failed to create consultation. Please check your connection.');
-          return;
-        }
-      }
-
-      // Send audio to backend for transcription
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'audio.webm');
-
-      try {
-        const uploadResponse = await fetch(
-          `${backendUrl}/api/consultations/${currentConsultationId}/audio`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${authToken}`,
-            },
-            body: formData,
-          }
-        );
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Failed to transcribe audio: ${uploadResponse.statusText}`);
-        }
-
-        const transcriptionData = await uploadResponse.json();
-        const transcribedText = transcriptionData.transcript || '[Unable to transcribe]';
-
-        const newMessages: Message[] = [
-          ...messages,
-          {
-            role: 'student',
-            content: transcribedText,
-          },
-        ];
-
-        const nextStep = interviewStep + 1;
-        const responses =
-          initialResponses[selectedScenario!.case_id] ||
-          ['I understand. Is there anything else?'];
-
-        if (nextStep < responses.length) {
-          newMessages.push({
-            role: 'patient',
-            content: responses[nextStep],
-          });
-          setInterviewStep(nextStep);
-        } else {
-          setMessages(newMessages);
-          setIsComplete(true);
-          generateFeedback(newMessages);
-          return;
-        }
-
-        setMessages(newMessages);
-        setAudioBlob(null);
-        setRecordingTime(0);
-      } catch (error) {
-        console.error('Error uploading audio:', error);
-        alert('Failed to transcribe audio. Please try again.');
-      }
-    } finally {
-      setIsTranscribing(false);
+      const blob = await audioRecorder.stop();
+      setAudioBlob(blob);
+      setIsRecording(false);
+    } catch (err: any) {
+      console.error('Error stopping recording:', err);
+      setError('Failed to stop recording. Please try again.');
     }
   };
 
-  const startInterview = (scenario: Scenario) => {
-    setSelectedScenario(scenario);
+  // Send audio to backend
+  const sendAudio = async () => {
+    if (!audioBlob || !sessionId) return;
 
-    // Get initial patient response
-    const responses = initialResponses[scenario.case_id] || [
-      "Hello doctor, how can I help you?",
-    ];
+    try {
+      setIsProcessing(true);
+      setError(null);
 
-    setMessages([
-      {
-        role: 'patient',
-        content: responses[0],
-      },
-    ]);
-    setInterviewStep(0);
-    setIsComplete(false);
-    setCurrentInput('');
-    setFeedback(null);
-  };
+      // Send audio to K2 reasoning endpoint
+      const response = await interviewApi.sendAudioInteraction(sessionId, audioBlob);
 
-  const sendMessage = () => {
-    if (!currentInput.trim() || !selectedScenario) return;
+      // Add student message (transcribed)
+      const newMessages: Message[] = [
+        ...messages,
+        {
+          role: 'student',
+          content: response.student_input,
+        },
+        {
+          role: 'patient',
+          content: response.tutor_response,
+          audioUrl: response.audio_url,
+        },
+      ];
 
-    const newMessages: Message[] = [
-      ...messages,
-      {
-        role: 'student',
-        content: currentInput,
-      },
-    ];
-
-    const nextStep = interviewStep + 1;
-    const responses =
-      initialResponses[selectedScenario.case_id] ||
-      ['I understand. Is there anything else?'];
-
-    if (nextStep < responses.length) {
-      newMessages.push({
-        role: 'patient',
-        content: responses[nextStep],
-      });
-      setInterviewStep(nextStep);
-    } else {
       setMessages(newMessages);
-      setCurrentInput('');
+      
+      // Play audio response if available
+      if (response.audio_url) {
+        playAudioResponse(response.audio_url);
+      }
+
+      // Reset recording state
+      setAudioBlob(null);
+      setRecordingTime(0);
+    } catch (err: any) {
+      console.error('Error sending audio:', err);
+      setError(err.message || 'Failed to process audio. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Play audio response from URL
+  const playAudioResponse = (audioUrl: string) => {
+    try {
+      // Stop current audio if playing
+      if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+      }
+
+      const audio = new Audio(audioUrl);
+      audio.play();
+      setCurrentAudio(audio);
+
+      audio.onended = () => setCurrentAudio(null);
+      audio.onerror = (e) => {
+        console.error('Error playing audio:', e);
+        setCurrentAudio(null);
+      };
+    } catch (err) {
+      console.error('Failed to play audio:', err);
+    }
+  };
+
+  // End interview and get feedback
+  const endInterview = async () => {
+    if (!sessionId) return;
+
+    try {
+      setFeedbackLoading(true);
+      setError(null);
       setIsComplete(true);
-      generateFeedback(newMessages);
-      return;
+
+      const result = await interviewApi.completeSession(sessionId);
+      setFeedback(result);
+    } catch (err: any) {
+      console.error('Error completing session:', err);
+      setError(err.message || 'Failed to complete interview. Please try again.');
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  // Reset interview
+  const resetInterview = () => {
+    // Stop any playing audio
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    
+    // Cancel any ongoing recording
+    if (isRecording) {
+      audioRecorder.cancel();
     }
 
-    setMessages(newMessages);
-    setCurrentInput('');
-  };
-
-  const generateFeedback = async (interviewMessages: Message[]) => {
-    setFeedbackLoading(true);
-    setFeedback(null);
-
-    // TODO: Replace with actual API call
-    // Example:
-    // const response = await fetch('/api/interviews/feedback', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     scenarioId: selectedScenario,
-    //     messages: interviewMessages,
-    //   }),
-    // });
-    // const data = await response.json();
-    // setFeedback(data);
-
-    setFeedbackLoading(false);
-  };
-
-  const endInterview = () => {
-    setIsComplete(true);
-    generateFeedback(messages);
-  };
-
-  const resetInterview = () => {
-    setSelectedScenario(null);
-    setConsultationId(null);
+    setSelectedCase(null);
+    setSessionId(null);
     setMessages([]);
-    setCurrentInput('');
-    setInterviewStep(0);
     setIsComplete(false);
     setFeedback(null);
-    setFeedbackLoading(false);
+    setAudioBlob(null);
+    setRecordingTime(0);
+    setIsRecording(false);
+    setError(null);
   };
 
-  if (!selectedScenario) {
+  // Case selection view
+  if (!selectedCase) {
     return (
       <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold text-gray-900 mb-2">Mock Patient Interviews</h2>
-          <p className="text-gray-600">Select a scenario or generate a custom patient case using AI</p>
+          <p className="text-gray-600">Select a clinical case to practice your patient interview skills</p>
         </div>
+
+        {error && (
+          <Card className="p-4 bg-red-50 border-2 border-red-200">
+            <div className="flex gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-red-900 font-medium">Error</p>
+                <p className="text-sm text-red-800">{error}</p>
+              </div>
+            </div>
+          </Card>
+        )}
 
         <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200">
           <div className="flex items-start gap-4">
@@ -391,51 +247,46 @@ export function MockInterview() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Interview Generation</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Interview Platform</h3>
               <p className="text-gray-700 mb-4">
-                Our platform uses advanced AI (powered by ElevenLabs for voice synthesis and K2 for clinical reasoning) 
-                to generate realistic patient scenarios tailored to your learning needs.
+                Practice with AI patients powered by K2 clinical reasoning and ElevenLabs voice synthesis. 
+                Speak naturally and receive intelligent Socratic responses to guide your learning.
               </p>
-              <Button className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate Custom Scenario
-              </Button>
             </div>
           </div>
         </Card>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {scenarios.length > 0 ? (
-            scenarios.map((scenario) => (
-              <Card key={scenario.id} className="p-6 hover:shadow-lg transition-shadow border-2 border-gray-100">
+        {loadingCases ? (
+          <Card className="p-12 text-center">
+            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading clinical cases...</p>
+          </Card>
+        ) : cases.length > 0 ? (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cases.map((caseData) => (
+              <Card key={caseData.id} className="p-6 hover:shadow-lg transition-shadow border-2 border-gray-100">
                 <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-gray-900 mb-2">{scenario.title}</h3>
-                      <Badge
-                        variant="secondary"
-                        className={`${
-                          scenario.difficulty === 'beginner'
-                            ? 'bg-green-100 text-green-700'
-                            : scenario.difficulty === 'intermediate'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}
-                      >
-                        {scenario.difficulty}
-                      </Badge>
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{caseData.title}</h3>
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Chief Complaint:</span> {caseData.chief_complaint}
                     </div>
                   </div>
-                  <div className="space-y-2">
+                  
+                  {caseData.learning_objectives && caseData.learning_objectives.length > 0 && (
                     <div className="text-sm text-gray-600">
-                      <span className="font-medium">Patient:</span> {scenario.patient}
+                      <span className="font-medium">Learning Objectives:</span>
+                      <ul className="mt-1 space-y-1">
+                        {caseData.learning_objectives.slice(0, 2).map((obj, idx) => (
+                          <li key={idx} className="text-xs">• {obj}</li>
+                        ))}
+                      </ul>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Chief Complaint:</span> {scenario.chiefComplaint}
-                    </div>
-                  </div>
+                  )}
+                  
                   <Button
-                    onClick={() => startInterview(scenario)}
+                    onClick={() => startInterview(caseData)}
+                    disabled={isProcessing}
                     className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
                   >
                     <Play className="w-4 h-4 mr-2" />
@@ -443,29 +294,46 @@ export function MockInterview() {
                   </Button>
                 </div>
               </Card>
-            ))
-          ) : (
-            <Card className="p-6 col-span-full text-center">
-              <p className="text-gray-500">No scenarios available. Please try again later.</p>
-            </Card>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <Card className="p-12 text-center">
+            <p className="text-gray-500 mb-4">No clinical cases available.</p>
+            <Button onClick={loadCases} variant="outline">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </Card>
+        )}
       </div>
     );
   }
 
+  // Interview view
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">{selectedScenario?.title}</h2>
-          <p className="text-gray-600">{selectedScenario?.patient} - {selectedScenario?.chiefComplaint}</p>
+          <h2 className="text-3xl font-bold text-gray-900">{selectedCase.title}</h2>
+          <p className="text-gray-600">Chief Complaint: {selectedCase.chief_complaint}</p>
         </div>
-        <Button onClick={resetInterview} variant="outline">
+        <Button onClick={resetInterview} variant="outline" disabled={isProcessing}>
           <RotateCcw className="w-4 h-4 mr-2" />
-          Change Scenario
+          Change Case
         </Button>
       </div>
+
+      {error && (
+        <Card className="p-4 bg-red-50 border-2 border-red-200">
+          <div className="flex gap-2">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-red-900 font-medium">Error</p>
+              <p className="text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-6">
         <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
@@ -484,6 +352,14 @@ export function MockInterview() {
                 }`}
               >
                 <p>{message.content}</p>
+                {message.audioUrl && (
+                  <button
+                    onClick={() => playAudioResponse(message.audioUrl!)}
+                    className="mt-2 text-xs underline hover:no-underline"
+                  >
+                    🔊 Play audio
+                  </button>
+                )}
               </div>
               {message.role === 'student' && (
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center flex-shrink-0">
@@ -497,54 +373,34 @@ export function MockInterview() {
         {!isComplete && (
           <div className="space-y-3">
             {/* Voice Recording Section */}
-            <div style={{ padding: '1.5rem', background: 'rgb(240, 249, 255)', borderRadius: '0.5rem', border: '2px solid rgb(191, 219, 254)' }}>
+            <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
               {!isRecording && !audioBlob && (
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ color: 'rgb(75, 85, 99)', marginBottom: '1rem' }}>
-                    Click the microphone to record your response to the patient
+                <div className="text-center">
+                  <p className="text-gray-700 mb-4">
+                    Click the microphone to record your question or response
                   </p>
                   <Button
                     onClick={startRecording}
-                    style={{
-                      background: 'rgb(59, 130, 246)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '500',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                    }}
+                    disabled={isProcessing}
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    <Mic style={{ width: '1.25rem', height: '1.25rem' }} />
+                    <Mic className="w-5 h-5 mr-2" />
                     Start Recording
                   </Button>
                 </div>
               )}
 
               {isRecording && (
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'rgb(239, 68, 68)', marginBottom: '0.5rem' }}>
-                      🔴 {recordingTime}s
+                <div className="text-center">
+                  <div className="mb-4">
+                    <div className="text-3xl font-bold text-red-600 mb-2 animate-pulse">
+                      🔴 {formatRecordingTime(recordingTime)}
                     </div>
-                    <p style={{ color: 'rgb(75, 85, 99)' }}>Recording...</p>
+                    <p className="text-gray-700">Recording...</p>
                   </div>
                   <Button
                     onClick={stopRecording}
-                    style={{
-                      background: 'rgb(239, 68, 68)',
-                      color: 'white',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '500',
-                    }}
+                    className="bg-red-600 hover:bg-red-700"
                   >
                     Stop Recording
                   </Button>
@@ -552,52 +408,31 @@ export function MockInterview() {
               )}
 
               {audioBlob && !isRecording && (
-                <div style={{ textAlign: 'center' }}>
-                  <p style={{ color: 'rgb(75, 85, 99)', marginBottom: '1rem' }}>
-                    ✓ Recording ready ({recordingTime}s)
+                <div className="text-center">
+                  <p className="text-gray-700 mb-4">
+                    ✓ Recording ready ({formatRecordingTime(recordingTime)})
                   </p>
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                  <div className="flex gap-2 justify-center">
                     <Button
                       onClick={startRecording}
-                      style={{
-                        background: 'transparent',
-                        color: 'rgb(59, 130, 246)',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        border: '2px solid rgb(59, 130, 246)',
-                        cursor: 'pointer',
-                        fontSize: '1rem',
-                        fontWeight: '500',
-                      }}
+                      variant="outline"
+                      disabled={isProcessing}
                     >
                       Re-record
                     </Button>
                     <Button
                       onClick={sendAudio}
-                      disabled={isTranscribing}
-                      style={{
-                        background: 'rgb(34, 197, 94)',
-                        color: 'white',
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        border: 'none',
-                        cursor: isTranscribing ? 'not-allowed' : 'pointer',
-                        fontSize: '1rem',
-                        fontWeight: '500',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        opacity: isTranscribing ? 0.6 : 1,
-                      }}
+                      disabled={isProcessing}
+                      className="bg-green-600 hover:bg-green-700"
                     >
-                      {isTranscribing ? (
+                      {isProcessing ? (
                         <>
-                          <Loader2 style={{ width: '1rem', height: '1rem', animation: 'spin 1s linear infinite' }} />
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Processing...
                         </>
                       ) : (
                         <>
-                          <Send style={{ width: '1rem', height: '1rem' }} />
+                          <Send className="w-4 h-4 mr-2" />
                           Send Response
                         </>
                       )}
@@ -611,6 +446,7 @@ export function MockInterview() {
               <Button
                 onClick={endInterview}
                 variant="outline"
+                disabled={isProcessing}
                 className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
               >
                 <Square className="w-4 h-4 mr-2" />
@@ -641,31 +477,23 @@ export function MockInterview() {
             </div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">Interview Complete</h3>
             <p className="text-gray-600">
-              {selectedScenario?.title} — {messages.filter(m => m.role === 'student').length} questions asked
+              {selectedCase.title} — {messages.filter(m => m.role === 'student').length} questions asked
             </p>
           </div>
 
           {feedbackLoading && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-              <p className="text-gray-600 font-medium">Analyzing your interview...</p>
-              <p className="text-sm text-gray-400 mt-1">Our AI is reviewing your clinical technique</p>
+              <p className="text-gray-600 font-medium">Analyzing your interview with K2 AI...</p>
+              <p className="text-sm text-gray-400 mt-1">Reviewing your clinical technique and reasoning</p>
             </div>
           )}
 
-          {!feedbackLoading && !feedback && (
-            <div className="p-6 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-center">
-              <p className="text-gray-500">
-                Feedback will appear here once the API is connected.
-              </p>
-            </div>
-          )}
-
-          {feedback && (
+          {!feedbackLoading && feedback && (
             <div className="space-y-4">
               <div className="p-4 bg-white rounded-lg border-2 border-blue-100">
                 <h4 className="font-semibold text-gray-900 mb-2">Overall Assessment</h4>
-                <p className="text-gray-700">{feedback.overall}</p>
+                <p className="text-gray-700">{feedback.evaluation.overall_assessment}</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
@@ -675,7 +503,7 @@ export function MockInterview() {
                     Strengths
                   </h4>
                   <ul className="space-y-2">
-                    {feedback.strengths.map((strength, idx) => (
+                    {feedback.evaluation.strengths.map((strength, idx) => (
                       <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
                         <span className="text-green-600 mt-1">•</span>
                         <span>{strength}</span>
@@ -690,7 +518,7 @@ export function MockInterview() {
                     Areas for Improvement
                   </h4>
                   <ul className="space-y-2">
-                    {feedback.improvements.map((improvement, idx) => (
+                    {feedback.evaluation.areas_for_improvement.map((improvement, idx) => (
                       <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
                         <span className="text-orange-600 mt-1">•</span>
                         <span>{improvement}</span>
@@ -699,13 +527,44 @@ export function MockInterview() {
                   </ul>
                 </div>
               </div>
+
+              {feedback.evaluation.key_findings.length > 0 && (
+                <div className="p-4 bg-white rounded-lg border-2 border-purple-100">
+                  <h4 className="font-semibold text-purple-700 mb-2">Key Findings</h4>
+                  <ul className="space-y-1">
+                    {feedback.evaluation.key_findings.map((finding, idx) => (
+                      <li key={idx} className="text-sm text-gray-700">• {finding}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {feedback.evaluation.missed_red_flags.length > 0 && (
+                <div className="p-4 bg-white rounded-lg border-2 border-red-100">
+                  <h4 className="font-semibold text-red-700 mb-2">Missed Red Flags</h4>
+                  <ul className="space-y-1">
+                    {feedback.evaluation.missed_red_flags.map((flag, idx) => (
+                      <li key={idx} className="text-sm text-gray-700">• {flag}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h4 className="font-semibold text-gray-900 mb-2">Session Summary</h4>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <p>• Total interactions: {feedback.summary.total_interactions}</p>
+                  <p>• Duration: {feedback.summary.duration_minutes.toFixed(1)} minutes</p>
+                  <p>• Questions asked: {feedback.summary.questions_asked}</p>
+                </div>
+              </div>
             </div>
           )}
 
           <div className="flex gap-3 mt-8 justify-center">
             <Button onClick={resetInterview} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
               <RotateCcw className="w-4 h-4 mr-2" />
-              Try Another Scenario
+              Try Another Case
             </Button>
           </div>
         </Card>
