@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { User, Bot, Play, RotateCcw, CheckCircle2, AlertCircle, Sparkles, Square, Loader2 } from 'lucide-react';
+import { User, Bot, Play, RotateCcw, CheckCircle2, AlertCircle, Sparkles, Square, Loader2, Mic, Send } from 'lucide-react';
 import { Badge } from './ui/badge';
-import apiClient from '../services/api';
+import { authService } from '../services/authService';
 
 interface Message {
   role: 'patient' | 'student';
@@ -59,15 +59,77 @@ const initialResponses: Record<string, string[]> = {
   ],
 };
 
+const HARDCODED_SCENARIOS: Scenario[] = [
+  {
+    case_id: 'case_001',
+    case_title: 'Acute Chest Pain',
+    description: 'A 45-year-old male presents with acute chest pain for 2 hours',
+    difficulty: 'intermediate',
+    id: 'case_001',
+    title: 'Acute Chest Pain',
+    patient: 'John Doe, 45M',
+    chiefComplaint: 'Chest pain for 2 hours',
+    color: 'red',
+  },
+  {
+    case_id: 'case_002',
+    case_title: 'Persistent Cough',
+    description: 'A 52-year-old female with a 3-week persistent cough',
+    difficulty: 'intermediate',
+    id: 'case_002',
+    title: 'Persistent Cough',
+    patient: 'Sarah Smith, 52F',
+    chiefComplaint: 'Persistent cough for 3 weeks',
+    color: 'yellow',
+  },
+  {
+    case_id: 'case_003',
+    case_title: 'Abdominal Pain',
+    description: 'A 28-year-old female presenting with acute abdominal pain',
+    difficulty: 'beginner',
+    id: 'case_003',
+    title: 'Abdominal Pain',
+    patient: 'Emma Wilson, 28F',
+    chiefComplaint: 'Acute abdominal pain',
+    color: 'orange',
+  },
+  {
+    case_id: 'case_004',
+    case_title: 'Dizziness and Syncope',
+    description: 'A 68-year-old male with episodes of dizziness and brief syncope',
+    difficulty: 'advanced',
+    id: 'case_004',
+    title: 'Dizziness and Syncope',
+    patient: 'Michael Brown, 68M',
+    chiefComplaint: 'Dizziness and brief fainting',
+    color: 'blue',
+  },
+  {
+    case_id: 'case_005',
+    case_title: 'Fever and Rash',
+    description: 'A 6-year-old child with fever and generalized rash',
+    difficulty: 'intermediate',
+    id: 'case_005',
+    title: 'Fever and Rash',
+    patient: 'Tommy Anderson, 6M',
+    chiefComplaint: 'Fever and rash',
+    color: 'purple',
+  },
+];
+
 export function MockInterview() {
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [scenarios] = useState<Scenario[]>(HARDCODED_SCENARIOS);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentInput, setCurrentInput] = useState('');
   const [interviewStep, setInterviewStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [consultationId, setConsultationId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     overall: string;
@@ -75,63 +137,174 @@ export function MockInterview() {
     improvements: string[];
   } | null>(null);
 
-  // Fetch cases from backend
-  useEffect(() => {
-    const fetchCases = async () => {
-      try {
-        const response = await apiClient.get('/api/consultations/cases');
-        const cases = response.data.map((caseData: CaseData, index: number) => ({
-          ...caseData,
-          id: caseData.case_id,
-          title: caseData.case_title,
-          patient: `Patient ${index + 1}`,
-          chiefComplaint: caseData.description,
-          color: ['red', 'yellow', 'orange', 'blue', 'purple'][index % 5],
-        }));
-        setScenarios(cases);
-      } catch (error) {
-        console.error('Failed to fetch cases:', error);
-        // Fallback to default scenarios
-        setScenarios([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCases();
-  }, []);
-
-  const startInterview = async (scenario: Scenario) => {
+  // Voice recording functions
+  const startRecording = async () => {
     try {
-      // Create consultation in backend
-      const response = await apiClient.post('/api/consultations/start', {
-        case_id: scenario.case_id,
-        case_title: scenario.case_title,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
 
-      const newConsultationId = response.data.id;
-      setConsultationId(newConsultationId);
-      setSelectedScenario(scenario);
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        setAudioBlob(blob);
+      };
 
-      // Get initial patient response
-      const responses = initialResponses[scenario.case_id] || [
-        "Hello doctor, how can I help you?",
-      ];
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+      setRecordingTime(0);
 
-      setMessages([
-        {
-          role: 'patient',
-          content: responses[0],
-        },
-      ]);
-      setInterviewStep(0);
-      setIsComplete(false);
-      setCurrentInput('');
-      setFeedback(null);
+      const timer = setInterval(() => {
+        setRecordingTime((t) => t + 1);
+      }, 1000);
+
+      recorder.onstart = () => {
+        (recorder as any).timerInterval = timer;
+      };
     } catch (error) {
-      console.error('Failed to start interview:', error);
-      alert('Failed to start interview');
+      alert('Microphone access denied');
     }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder) {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      setIsRecording(false);
+      if ((mediaRecorder as any).timerInterval) {
+        clearInterval((mediaRecorder as any).timerInterval);
+      }
+    }
+  };
+
+  const sendAudio = async () => {
+    if (!audioBlob) return;
+
+    setIsTranscribing(true);
+    try {
+      // Get backend URL from environment
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+
+      // Get auth token from Supabase session
+      const session = await authService.getCurrentSession();
+      const authToken = session?.access_token;
+
+      if (!authToken) {
+        alert('Not authenticated. Please login first.');
+        return;
+      }
+
+      let currentConsultationId = consultationId;
+
+      // If no consultation exists, create one
+      if (!currentConsultationId) {
+        try {
+          const startResponse = await fetch(`${backendUrl}/api/consultations/start`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({
+              case_id: selectedScenario!.case_id,
+              case_title: selectedScenario!.title,
+            }),
+          });
+
+          if (!startResponse.ok) {
+            throw new Error(`Failed to create consultation: ${startResponse.statusText}`);
+          }
+
+          const consultationData = await startResponse.json();
+          currentConsultationId = consultationData.id;
+          setConsultationId(currentConsultationId);
+        } catch (error) {
+          console.error('Error creating consultation:', error);
+          alert('Failed to create consultation. Please check your connection.');
+          return;
+        }
+      }
+
+      // Send audio to backend for transcription
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+
+      try {
+        const uploadResponse = await fetch(
+          `${backendUrl}/api/consultations/${currentConsultationId}/audio`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+            },
+            body: formData,
+          }
+        );
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to transcribe audio: ${uploadResponse.statusText}`);
+        }
+
+        const transcriptionData = await uploadResponse.json();
+        const transcribedText = transcriptionData.transcript || '[Unable to transcribe]';
+
+        const newMessages: Message[] = [
+          ...messages,
+          {
+            role: 'student',
+            content: transcribedText,
+          },
+        ];
+
+        const nextStep = interviewStep + 1;
+        const responses =
+          initialResponses[selectedScenario!.case_id] ||
+          ['I understand. Is there anything else?'];
+
+        if (nextStep < responses.length) {
+          newMessages.push({
+            role: 'patient',
+            content: responses[nextStep],
+          });
+          setInterviewStep(nextStep);
+        } else {
+          setMessages(newMessages);
+          setIsComplete(true);
+          generateFeedback(newMessages);
+          return;
+        }
+
+        setMessages(newMessages);
+        setAudioBlob(null);
+        setRecordingTime(0);
+      } catch (error) {
+        console.error('Error uploading audio:', error);
+        alert('Failed to transcribe audio. Please try again.');
+      }
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const startInterview = (scenario: Scenario) => {
+    setSelectedScenario(scenario);
+
+    // Get initial patient response
+    const responses = initialResponses[scenario.case_id] || [
+      "Hello doctor, how can I help you?",
+    ];
+
+    setMessages([
+      {
+        role: 'patient',
+        content: responses[0],
+      },
+    ]);
+    setInterviewStep(0);
+    setIsComplete(false);
+    setCurrentInput('');
+    setFeedback(null);
   };
 
   const sendMessage = () => {
@@ -203,14 +376,6 @@ export function MockInterview() {
     setFeedback(null);
     setFeedbackLoading(false);
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-      </div>
-    );
-  }
 
   if (!selectedScenario) {
     return (
@@ -331,28 +496,118 @@ export function MockInterview() {
 
         {!isComplete && (
           <div className="space-y-3">
-            <Textarea
-              value={currentInput}
-              onChange={(e) => setCurrentInput(e.target.value)}
-              placeholder="Type your question or response to the patient..."
-              rows={3}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              className="resize-none"
-            />
+            {/* Voice Recording Section */}
+            <div style={{ padding: '1.5rem', background: 'rgb(240, 249, 255)', borderRadius: '0.5rem', border: '2px solid rgb(191, 219, 254)' }}>
+              {!isRecording && !audioBlob && (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ color: 'rgb(75, 85, 99)', marginBottom: '1rem' }}>
+                    Click the microphone to record your response to the patient
+                  </p>
+                  <Button
+                    onClick={startRecording}
+                    style={{
+                      background: 'rgb(59, 130, 246)',
+                      color: 'white',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      fontWeight: '500',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <Mic style={{ width: '1.25rem', height: '1.25rem' }} />
+                    Start Recording
+                  </Button>
+                </div>
+              )}
+
+              {isRecording && (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'rgb(239, 68, 68)', marginBottom: '0.5rem' }}>
+                      🔴 {recordingTime}s
+                    </div>
+                    <p style={{ color: 'rgb(75, 85, 99)' }}>Recording...</p>
+                  </div>
+                  <Button
+                    onClick={stopRecording}
+                    style={{
+                      background: 'rgb(239, 68, 68)',
+                      color: 'white',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: '1rem',
+                      fontWeight: '500',
+                    }}
+                  >
+                    Stop Recording
+                  </Button>
+                </div>
+              )}
+
+              {audioBlob && !isRecording && (
+                <div style={{ textAlign: 'center' }}>
+                  <p style={{ color: 'rgb(75, 85, 99)', marginBottom: '1rem' }}>
+                    ✓ Recording ready ({recordingTime}s)
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                    <Button
+                      onClick={startRecording}
+                      style={{
+                        background: 'transparent',
+                        color: 'rgb(59, 130, 246)',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        border: '2px solid rgb(59, 130, 246)',
+                        cursor: 'pointer',
+                        fontSize: '1rem',
+                        fontWeight: '500',
+                      }}
+                    >
+                      Re-record
+                    </Button>
+                    <Button
+                      onClick={sendAudio}
+                      disabled={isTranscribing}
+                      style={{
+                        background: 'rgb(34, 197, 94)',
+                        color: 'white',
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        border: 'none',
+                        cursor: isTranscribing ? 'not-allowed' : 'pointer',
+                        fontSize: '1rem',
+                        fontWeight: '500',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        opacity: isTranscribing ? 0.6 : 1,
+                      }}
+                    >
+                      {isTranscribing ? (
+                        <>
+                          <Loader2 style={{ width: '1rem', height: '1rem', animation: 'spin 1s linear infinite' }} />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Send style={{ width: '1rem', height: '1rem' }} />
+                          Send Response
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between">
-              <div className="flex gap-2 items-center">
-                <Button onClick={sendMessage} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
-                  Send Message
-                </Button>
-                <span className="text-sm text-gray-500">
-                  Press Enter to send, Shift+Enter for new line
-                </span>
-              </div>
               <Button
                 onClick={endInterview}
                 variant="outline"
