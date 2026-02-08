@@ -1,12 +1,13 @@
 import React from 'react';
-import { Stethoscope, BookOpen, Calendar, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Stethoscope, BookOpen, Calendar, ArrowRight, LogIn } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import { Card } from './ui/card';
 
-interface HomeProps {
-  onNavigate: (page: 'home' | 'interview' | 'mcat' | 'scheduling') => void;
-}
+export function Home() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-export function Home({ onNavigate }: HomeProps) {
   const features = [
     {
       id: 'interview',
@@ -37,6 +38,14 @@ export function Home({ onNavigate }: HomeProps) {
     },
   ];
 
+  const handleFeatureClick = (featureId: string) => {
+    if (!user) {
+      navigate('/login');
+    } else {
+      navigate(`/${featureId}`);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Hero Section */}
@@ -47,6 +56,28 @@ export function Home({ onNavigate }: HomeProps) {
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           AI-powered platform for clinical skills development, exam preparation, and academic success
         </p>
+        {!user && (
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginTop: '1.5rem',
+              padding: '0.75rem 1.5rem',
+              background: 'rgb(37, 99, 235)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '1rem',
+            }}
+          >
+            <LogIn size={20} />
+            Get Started
+          </button>
+        )}
       </div>
 
       {/* Feature Cards */}
@@ -55,7 +86,7 @@ export function Home({ onNavigate }: HomeProps) {
           <Card
             key={feature.id}
             className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-gray-100 hover:border-blue-200 group"
-            onClick={() => onNavigate(feature.id as any)}
+            onClick={() => handleFeatureClick(feature.id)}
           >
             <div className="flex items-start gap-4">
               <div className={`p-3 rounded-xl bg-gradient-to-br ${feature.color} flex-shrink-0`}>
@@ -67,7 +98,7 @@ export function Home({ onNavigate }: HomeProps) {
                 </h3>
                 <p className="text-gray-600">{feature.description}</p>
                 <div className="flex items-center gap-2 text-blue-600 font-medium pt-2">
-                  <span>Get Started</span>
+                  <span>{user ? 'Open' : 'Login to Access'}</span>
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -80,7 +111,7 @@ export function Home({ onNavigate }: HomeProps) {
       <Card className="p-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-100">
         <h3 className="text-lg font-semibold text-gray-900 mb-3">💡 Quick Tip</h3>
         <p className="text-gray-700">
-          Start your day with an AI-generated mock interview, then use the diagnosis analysis tool to reinforce your clinical reasoning. 
+          Start your day with an AI-generated mock interview, then use the diagnosis analysis tool to reinforce your clinical reasoning.
           Schedule regular study sessions to maintain consistent progress across all your exams!
         </p>
       </Card>

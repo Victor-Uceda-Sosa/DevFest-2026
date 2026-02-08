@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { toast } from 'react-toastify';
 
 const Register = () => {
   const [fullName, setFullName] = useState('');
@@ -9,30 +8,34 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
   const { register } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setSuccess('');
 
     if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      setError('Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
 
     try {
-      await register(email, password, fullName);
-      toast.success('Registration successful! Please check your email to verify your account.');
-      navigate('/login');
-    } catch (error) {
-      toast.error(error.message || 'Registration failed');
+      await register(email, password);
+      setSuccess('Registration successful! Please check your email to verify your account.');
+      setTimeout(() => navigate('/login'), 2000);
+    } catch (err) {
+      setError(err?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -50,6 +53,16 @@ const Register = () => {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          {error && (
+            <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
+              {success}
+            </div>
+          )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="fullName" className="sr-only">

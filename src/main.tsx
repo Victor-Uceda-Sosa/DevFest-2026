@@ -1,5 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 function AppLoader() {
@@ -57,7 +59,13 @@ function AppLoader() {
 
 const root = document.getElementById('root');
 if (root) {
-  createRoot(root).render(<AppLoader />);
+  createRoot(root).render(
+    <BrowserRouter>
+      <AuthProvider>
+        <AppLoader />
+      </AuthProvider>
+    </BrowserRouter>
+  );
 } else {
   document.body.innerHTML = '<h1 style="color:red">ERROR: root element not found</h1>';
 }
