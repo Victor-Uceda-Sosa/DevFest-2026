@@ -77,20 +77,17 @@ class LiteratureCaseGenerator:
             pmid_list = ', '.join([a['pmid'] for a in literature])
 
             # Simplified prompt that forces JSON output
-            prompt = f"""GENERATE JSON ONLY. NO OTHER TEXT.
+            # Use very explicit format with backticks to indicate JSON block
+            prompt = f"""Output ONLY valid JSON, no markdown, no explanation, no thinking:
 
-Condition: {medical_condition}
-Difficulty: {difficulty}
-Literature: PMIDs {pmid_list}
-
-{{"title":"Case title for {medical_condition}","chief_complaint":"Patient age/gender with main symptom","clinical_scenario":"Patient speaking naturally about symptoms. Example format: I started feeling {medical_condition} symptoms about X days ago. I have... What I notice is... It's worse when... etc."}}"""
+{{"title":"Medical Case Title","chief_complaint":"Patient age/gender with symptom","clinical_scenario":"Patient speech: I have experienced {medical_condition}...","learning_objectives":["objective 1"]}}"""
 
             # Call K2 to generate case
             logger.info(f"🤖 Calling K2 to synthesize case from literature...")
             result = await self.kimi.complete(
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=1500
+                temperature=0.3,  # Lower temperature for more consistent JSON output
+                max_tokens=800  # Reduce tokens to discourage long explanations
             )
             logger.info(f"✅ K2 returned response")
 

@@ -8,9 +8,9 @@ class CaseBase(BaseModel):
     """Base model for clinical case."""
     title: str
     chief_complaint: str
-    clinical_scenario: Dict[str, Any]
-    differential_diagnoses: Dict[str, Any]
-    red_flags: list[str]
+    clinical_scenario: str
+    differential_diagnoses: Optional[list[str]] = None
+    red_flags: Optional[list[str]] = None
     learning_objectives: list[str]
 
 
