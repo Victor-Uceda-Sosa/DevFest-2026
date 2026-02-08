@@ -111,6 +111,50 @@ class KimiService:
             print(f"Kimi service error: {str(e)}")
             raise Exception(f"Kimi reasoning failed: {str(e)}")
     
+    async def generate_patient_response(
+        self,
+        student_input: str,
+        case_data: Dict[str, Any],
+        conversation_history: List[Dict[str, str]],
+        difficulty: str = "medium"
+    ) -> Dict[str, Any]:
+        """
+        Generate patient persona response to student doctor's question.
+
+        Args:
+            student_input: Student doctor's question or statement
+            case_data: Clinical case information
+            conversation_history: Previous messages in the session
+            difficulty: Case difficulty (easy, medium, hard)
+
+        Returns:
+            Dictionary with patient response and metadata
+        """
+        from app.utils.prompts import get_patient_system_prompt
+
+        # Generate patient persona system prompt
+        system_prompt = get_patient_system_prompt(case_data, difficulty)
+
+        # Query Kimi K2.5 as patient persona
+        result = await self.query_k2_thinking(
+            system_prompt=system_prompt,
+            user_message=student_input,
+            conversation_history=conversation_history,
+            temperature=0.8,  # Higher temperature for more natural, varied responses
+            max_tokens=400  # Reasonable limit for patient responses
+        )
+
+        # Extract metadata
+        reasoning_metadata = {
+            "thinking_process": result.get("thinking_process", ""),
+            "tokens_used": result.get("usage", {})
+        }
+
+        return {
+            "patient_response": result["response"],
+            "reasoning_metadata": reasoning_metadata
+        }
+
     async def analyze_clinical_reasoning(
         self,
         student_input: str,
@@ -119,61 +163,114 @@ class KimiService:
     ) -> Dict[str, Any]:
         """
         Analyze student's clinical reasoning and generate Socratic response.
-        
+
         Args:
             student_input: Student's response or question
             case_context: Clinical case information
             conversation_history: Previous messages in the session
-            
+
         Returns:
             Dictionary with tutor response and reasoning metadata
         """
-        from app.utils.prompt_templates import (
-    format_system_prompt,
-    format_patient_prompt,
-    format_interaction_prompt
-)
-        
-        # Use PATIENT prompt instead of tutor prompt for patient roleplay mode
-        system_prompt = format_patient_prompt(
-            case_description=str(case_context.get("clinical_scenario", {})),
-            chief_complaint=case_context.get("chief_complaint", "")
+        from app.utils.prompts import get_patient_system_prompt
+
+        # Use patient prompt for persona-based responses
+        system_prompt = get_patient_system_prompt(
+            case_context,
+            difficulty=case_context.get("difficulty", "medium")
         )
-        
-        # For patient mode, pass student's question directly (no complex analysis)
-        user_message = student_input
-        
+
         # Query Kimi K2.5 via Featherless
         result = await self.query_k2_thinking(
             system_prompt=system_prompt,
-            user_message=user_message,
-            conversation_history=conversation_history[:-1] if len(conversation_history) > 0 else None,
+            user_message=student_input,
+            conversation_history=conversation_history,
             temperature=0.8,  # Slightly higher for more natural patient responses
-            max_tokens=500  # Shorter limit for patient responses
+            max_tokens=500  # Patient response limit
         )
-        
+
         # Extract reasoning metadata
         reasoning_metadata = {
             "thinking_process": result.get("thinking_process", ""),
             "tokens_used": result.get("usage", {})
         }
-        
+
         return {
             "tutor_response": result["response"],
+            "patient_response": result["response"],  # In patient mode, same as tutor_response
             "reasoning_metadata": reasoning_metadata
         }
     
+    async def complete(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: int = 1000
+    ) -> Dict[str, Any]:
+        """
+        Simple completion method for flexible use (e.g., RAG synthesis).
+
+        Args:
+            messages: List of messages with 'role' and 'content'
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens in response
+
+        Returns:
+            Dictionary with 'content' key containing the response
+        """
+        try:
+            # Format messages into a prompt
+            prompt_parts = []
+            for msg in messages:
+                role = msg.get("role", "user").capitalize()
+                content = msg.get("content", "")
+                prompt_parts.append(f"{role}: {content}")
+
+            prompt_parts.append("Assistant: ")
+            full_prompt = "\n".join(prompt_parts)
+
+            # Make request to Featherless
+            payload = {
+                "model": self.model,
+                "prompt": full_prompt,
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+            }
+
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{self.api_base}/completions",
+                    headers=self.headers,
+                    json=payload
+                )
+                response.raise_for_status()
+
+                result = response.json()
+                if "choices" not in result or len(result["choices"]) == 0:
+                    raise Exception("No response choices in API result")
+
+                response_text = result["choices"][0].get("text", "").strip()
+
+                return {
+                    "content": response_text,
+                    "usage": result.get("usage", {})
+                }
+
+        except Exception as e:
+            print(f"Kimi complete error: {str(e)}")
+            raise
+
     def _format_history(self, conversation_history: List[Dict[str, str]]) -> str:
         """Format conversation history for context."""
         if not conversation_history:
             return "This is the first interaction."
-        
+
         formatted = []
         for msg in conversation_history[-10:]:  # Last 10 messages
             role = msg.get("role", "user")
             content = msg.get("content", "")
             formatted.append(f"{role.capitalize()}: {content}")
-        
+
         return "\n".join(formatted)
 
 
