@@ -53,7 +53,7 @@ export function Home({ onNavigate }: HomeProps) {
       </div>
 
       {/* Featured Interview Section */}
-      <Card className="p-8 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer" onClick={() => onNavigate('interview')}>
+      <Card className="p-8 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer max-w-2xl mx-auto w-full" onClick={() => onNavigate('interview')}>
         <div className="flex flex-col items-center justify-center space-y-4">
           <div className="p-3 rounded-full bg-cyan-500/20 flex items-center justify-center">
             <Stethoscope className="w-8 h-8 text-cyan-400" />
@@ -70,7 +70,7 @@ export function Home({ onNavigate }: HomeProps) {
       </Card>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto w-full">
         {features.map((feature) => (
           <Card
             key={feature.id}
