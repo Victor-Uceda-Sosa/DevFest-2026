@@ -94,6 +94,86 @@ export const sendAudioInteraction = async (
   return response.data;
 };
 
+// Streaming version of sendAudioInteraction - returns audio chunks as they're generated
+export const sendAudioInteractionStream = async (
+  sessionId: string,
+  audioBlob: Blob,
+  onChunk: (chunk: Uint8Array) => void
+): Promise<void> => {
+  const formData = new FormData();
+  formData.append('session_id', sessionId);
+  formData.append('audio_file', audioBlob, 'recording.webm');
+
+  const token = localStorage.getItem('access_token');
+  const response = await fetch('/api/reasoning/interact-stream', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to stream audio: ${response.status}`);
+  }
+
+  // Stream the response body
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Response body is not readable');
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      onChunk(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+};
+
+// Streaming version of sendTextInteraction
+export const sendTextInteractionStream = async (
+  sessionId: string,
+  textInput: string,
+  onChunk: (chunk: Uint8Array) => void
+): Promise<void> => {
+  const formData = new FormData();
+  formData.append('session_id', sessionId);
+  formData.append('text_input', textInput);
+
+  const token = localStorage.getItem('access_token');
+  const response = await fetch('/api/reasoning/interact-stream', {
+    method: 'POST',
+    body: formData,
+    headers: {
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to stream audio: ${response.status}`);
+  }
+
+  // Stream the response body
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error('Response body is not readable');
+  }
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      onChunk(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+};
+
 // Combined function that handles both text and audio
 export const sendInteraction = async (
   sessionId: string,
@@ -108,6 +188,21 @@ export const sendInteraction = async (
   }
 };
 
+// Combined streaming function
+export const sendInteractionStream = async (
+  sessionId: string,
+  input: { text?: string; audio?: Blob },
+  onChunk: (chunk: Uint8Array) => void
+): Promise<void> => {
+  if (input.audio) {
+    return sendAudioInteractionStream(sessionId, input.audio, onChunk);
+  } else if (input.text) {
+    return sendTextInteractionStream(sessionId, input.text, onChunk);
+  } else {
+    throw new Error('Either text or audio input is required');
+  }
+};
+
 // ===== Export all =====
 export const interviewApi = {
   getCases,
@@ -117,7 +212,10 @@ export const interviewApi = {
   completeSession,
   sendTextInteraction,
   sendAudioInteraction,
+  sendTextInteractionStream,
+  sendAudioInteractionStream,
   sendInteraction,
+  sendInteractionStream,
 };
 
 export default interviewApi;

@@ -116,51 +116,38 @@ export function MockInterview() {
     if (!audioBlob || !sessionId) return;
 
     try {
-      console.log('\n🚀 ============ SENDING AUDIO TO BACKEND ============');
+      console.log('\n🚀 ============ SENDING AUDIO TO BACKEND (STREAMING) ============');
       console.log('📊 Audio Blob Info:');
       console.log('   - Size:', audioBlob.size, 'bytes');
       console.log('   - Type:', audioBlob.type);
       console.log('   - Recording duration:', recordingTime, 'seconds');
       console.log('   - Session ID:', sessionId);
-      
+
       setIsProcessing(true);
       setError(null);
 
-      // Send audio to K2 reasoning endpoint
-      console.log('📤 Sending POST request to /api/reasoning/interact...');
+      // Initialize streaming audio context
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = new Uint8Array();
+      let studentInputText = '';
+      let tutorResponseText = '';
       const startTime = Date.now();
-      
-      const response = await interviewApi.sendAudioInteraction(sessionId, audioBlob);
-      
+
+      console.log('📤 Streaming POST request to /api/reasoning/interact-stream...');
+
+      // Stream audio chunks and play them as they arrive
+      await interviewApi.sendInteractionStream(
+        sessionId,
+        { audio: audioBlob },
+        (chunk: Uint8Array) => {
+          console.log(`🎵 Received chunk: ${chunk.length} bytes`);
+          // Play audio chunk immediately
+          playAudioChunk(chunk);
+        }
+      );
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`✅ Response received in ${duration}s`);
-      console.log('📝 Transcription:', response.student_input);
-      console.log('🤖 AI Response:', response.tutor_response.substring(0, 100) + '...');
-      console.log('🔊 Audio URL:', response.audio_url || 'No audio');
-
-      // Add student message (transcribed)
-      const newMessages: Message[] = [
-        ...messages,
-        {
-          role: 'student',
-          content: response.student_input,
-        },
-        {
-          role: 'patient',
-          content: response.tutor_response,
-          audioUrl: response.audio_url,
-        },
-      ];
-
-      setMessages(newMessages);
-      
-      // Play audio response if available
-      if (response.audio_url) {
-        console.log('🎵 Playing audio response...');
-        playAudioResponse(response.audio_url);
-      } else {
-        console.warn('⚠️  No audio URL in response');
-      }
+      console.log(`✅ Streaming complete in ${duration}s`);
 
       // Reset recording state
       setAudioBlob(null);
@@ -175,6 +162,33 @@ export function MockInterview() {
       setError(err.message || 'Failed to process audio. Please try again.');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Play audio chunks as they arrive from the stream
+  const playAudioChunk = (chunk: Uint8Array) => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const blob = new Blob([chunk], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+
+      // Queue the chunk for playback
+      if (currentAudio) {
+        // Wait for current audio to finish before playing next chunk
+        currentAudio.onended = () => {
+          const audio = new Audio(url);
+          audio.play();
+          setCurrentAudio(audio);
+          audio.onended = () => setCurrentAudio(null);
+        };
+      } else {
+        const audio = new Audio(url);
+        audio.play();
+        setCurrentAudio(audio);
+        audio.onended = () => setCurrentAudio(null);
+      }
+    } catch (err) {
+      console.error('Error playing audio chunk:', err);
     }
   };
 
