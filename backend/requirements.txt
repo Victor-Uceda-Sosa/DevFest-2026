@@ -11,3 +11,4 @@ elevenlabs==1.10.0
 aiofiles==24.1.0
 praw==7.7.1
 anthropic==0.39.0
+chromadb==0.4.24

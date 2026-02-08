@@ -1,106 +1,117 @@
 """
-Routes for Reddit-based case generation.
-Allows generating realistic patient cases from Reddit health posts.
+Routes for K2 + ChromaDB case generation.
+Generates realistic medical cases using K2 AI informed by medical knowledge base.
 """
 
 from fastapi import APIRouter, HTTPException, status
 from typing import List, Optional
 import logging
-from app.services.reddit_scraper import reddit_scraper
-from app.services.case_generator import case_generator
+from app.services.k2_case_generator import k2_case_generator
+from app.services.chroma_service import chroma_service
 from app.services.supabase_service import supabase_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-@router.post("/generate-from-reddit")
-async def generate_cases_from_reddit(
-    limit: int = 5,
-    subreddits: Optional[List[str]] = None,
-    time_filter: str = "month"
+@router.post("/init-knowledge-base")
+async def initialize_knowledge_base():
+    """
+    Initialize ChromaDB with medical knowledge base.
+    Only needs to run once.
+    """
+    try:
+        logger.info("📚 Initializing medical knowledge base...")
+        await chroma_service.seed_common_conditions()
+
+        return {
+            "success": True,
+            "message": "Medical knowledge base initialized with common conditions"
+        }
+
+    except Exception as e:
+        logger.error(f"Error initializing knowledge base: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to initialize knowledge base: {str(e)}"
+        )
+
+
+@router.post("/generate-with-k2")
+async def generate_cases_with_k2(
+    condition: str,
+    limit: int = 1,
+    difficulty: str = "medium"
 ):
     """
-    Generate medical cases from Reddit health posts.
+    Generate medical cases using K2 AI informed by medical knowledge base.
 
     Args:
-        limit: Number of posts to scrape
-        subreddits: Which subreddits to scrape (defaults to popular health ones)
-        time_filter: Time period (hour, day, week, month, year, all)
+        condition: Medical condition to generate case for (e.g., "Acute Chest Pain")
+        limit: Number of cases to generate
+        difficulty: Case difficulty (easy, medium, hard)
 
     Returns:
         Generated cases ready for student consultations
     """
     try:
-        if not reddit_scraper.reddit:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Reddit API not configured. Set REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET in .env"
-            )
-
-        logger.info(f"🔍 Generating cases from Reddit (limit: {limit})...")
-
-        # Fetch posts from Reddit
-        posts = await reddit_scraper.fetch_health_posts(
-            subreddits=subreddits,
-            limit=limit * 3,  # Fetch more to account for filtering
-            time_filter=time_filter
-        )
-
-        if not posts:
+        if difficulty not in ["easy", "medium", "hard"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No posts found from Reddit"
+                detail="Difficulty must be: easy, medium, or hard"
             )
+
+        logger.info(f"🧠 Generating {limit} case(s) for: {condition} (difficulty: {difficulty})...")
 
         generated_cases = []
 
-        # Process each post
-        for post in posts:
-            if len(generated_cases) >= limit:
-                break
+        # Generate cases
+        for i in range(limit):
+            logger.info(f"Generating case {i+1}/{limit}...")
 
-            logger.info(f"Processing post: {post['title'][:50]}...")
-
-            # Get comments for context
-            comments = await reddit_scraper.get_post_comments(post["id"], limit=3)
-
-            # Generate case from post
-            case_data = await case_generator.generate_case_from_post(post, comments)
+            # Use K2 to generate case
+            case_data = await k2_case_generator.generate_case(condition, difficulty)
 
             if case_data:
-                # Enhance personality from writing style
-                case_data = await case_generator.enhance_personality_from_post(case_data, post)
-
                 # Store in database
                 try:
                     stored_case = await supabase_service.create_case(case_data)
                     generated_cases.append({
-                        "id": stored_case.id,
+                        "id": str(stored_case.id),
                         "title": case_data.get("title"),
                         "chief_complaint": case_data.get("chief_complaint"),
-                        "source": "reddit",
-                        "source_url": post.get("url"),
-                        "safety_check": case_data.get("safety_check")
+                        "source": "k2_generated",
+                        "medical_condition": condition,
+                        "difficulty": difficulty
                     })
                     logger.info(f"✅ Stored case: {case_data.get('title')}")
                 except Exception as e:
                     logger.error(f"Failed to store case: {e}")
                     continue
+            else:
+                logger.warning(f"Failed to generate case {i+1}")
 
-        logger.info(f"✅ Generated {len(generated_cases)} cases from Reddit")
+        if not generated_cases:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to generate any cases for {condition}"
+            )
+
+        logger.info(f"✅ Generated and stored {len(generated_cases)} cases")
 
         return {
             "success": True,
             "count": len(generated_cases),
+            "condition": condition,
+            "difficulty": difficulty,
             "cases": generated_cases,
-            "message": f"Generated {len(generated_cases)} patient cases from Reddit"
+            "message": f"Generated {len(generated_cases)} patient case(s) for {condition}"
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error generating cases: {e}")
+        logger.error(f"Error generating cases: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate cases: {str(e)}"
