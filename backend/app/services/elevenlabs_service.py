@@ -40,7 +40,10 @@ class ElevenLabsService:
                 # Transcribe from file
                 print(f"DEBUG: Transcribing from file: {tmp_path}")
                 transcriber = aai.Transcriber()
-                config = aai.TranscriptionConfig(language_code="en")
+                config = aai.TranscriptionConfig(
+                    language_code="en",
+                    speech_models=["universal-2"]
+                )
 
                 transcript = transcriber.transcribe(tmp_path, config=config)
 
