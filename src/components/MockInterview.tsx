@@ -209,10 +209,11 @@ export function MockInterview() {
       // Add student message immediately (for live transcript effect)
       let studentInputText = '';
 
-      // Send audio and get response
+      // Send audio and get response (include case_id for dynamic responses)
       const response = await interviewApi.sendInteraction(
         sessionId,
-        { audio: audioBlob }
+        { audio: audioBlob },
+        selectedCase?.id
       );
 
       studentInputText = response.student_input;

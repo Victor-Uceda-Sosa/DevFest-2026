@@ -56,11 +56,15 @@ export const completeSession = async (
 
 export const sendTextInteraction = async (
   sessionId: string,
-  textInput: string
+  textInput: string,
+  caseId?: string
 ): Promise<InteractionResponse> => {
   const formData = new FormData();
   formData.append('session_id', sessionId);
   formData.append('text_input', textInput);
+  if (caseId) {
+    formData.append('case_id', caseId);
+  }
 
   const response = await api.post<InteractionResponse>(
     '/api/reasoning/interact',
@@ -76,11 +80,15 @@ export const sendTextInteraction = async (
 
 export const sendAudioInteraction = async (
   sessionId: string,
-  audioBlob: Blob
+  audioBlob: Blob,
+  caseId?: string
 ): Promise<InteractionResponse> => {
   const formData = new FormData();
   formData.append('session_id', sessionId);
   formData.append('audio_file', audioBlob, 'recording.webm');
+  if (caseId) {
+    formData.append('case_id', caseId);
+  }
 
   const response = await api.post<InteractionResponse>(
     '/api/reasoning/interact',
@@ -98,11 +106,15 @@ export const sendAudioInteraction = async (
 export const sendAudioInteractionStream = async (
   sessionId: string,
   audioBlob: Blob,
-  onChunk: (chunk: Uint8Array) => void
+  onChunk: (chunk: Uint8Array) => void,
+  caseId?: string
 ): Promise<void> => {
   const formData = new FormData();
   formData.append('session_id', sessionId);
   formData.append('audio_file', audioBlob, 'recording.webm');
+  if (caseId) {
+    formData.append('case_id', caseId);
+  }
 
   const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const token = localStorage.getItem('access_token');
@@ -139,11 +151,15 @@ export const sendAudioInteractionStream = async (
 export const sendTextInteractionStream = async (
   sessionId: string,
   textInput: string,
-  onChunk: (chunk: Uint8Array) => void
+  onChunk: (chunk: Uint8Array) => void,
+  caseId?: string
 ): Promise<void> => {
   const formData = new FormData();
   formData.append('session_id', sessionId);
   formData.append('text_input', textInput);
+  if (caseId) {
+    formData.append('case_id', caseId);
+  }
 
   const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const token = localStorage.getItem('access_token');
@@ -179,12 +195,13 @@ export const sendTextInteractionStream = async (
 // Combined function that handles both text and audio
 export const sendInteraction = async (
   sessionId: string,
-  input: { text?: string; audio?: Blob }
+  input: { text?: string; audio?: Blob },
+  caseId?: string
 ): Promise<InteractionResponse> => {
   if (input.audio) {
-    return sendAudioInteraction(sessionId, input.audio);
+    return sendAudioInteraction(sessionId, input.audio, caseId);
   } else if (input.text) {
-    return sendTextInteraction(sessionId, input.text);
+    return sendTextInteraction(sessionId, input.text, caseId);
   } else {
     throw new Error('Either text or audio input is required');
   }
@@ -194,12 +211,13 @@ export const sendInteraction = async (
 export const sendInteractionStream = async (
   sessionId: string,
   input: { text?: string; audio?: Blob },
-  onChunk: (chunk: Uint8Array) => void
+  onChunk: (chunk: Uint8Array) => void,
+  caseId?: string
 ): Promise<void> => {
   if (input.audio) {
-    return sendAudioInteractionStream(sessionId, input.audio, onChunk);
+    return sendAudioInteractionStream(sessionId, input.audio, onChunk, caseId);
   } else if (input.text) {
-    return sendTextInteractionStream(sessionId, input.text, onChunk);
+    return sendTextInteractionStream(sessionId, input.text, onChunk, caseId);
   } else {
     throw new Error('Either text or audio input is required');
   }
