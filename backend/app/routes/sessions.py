@@ -7,8 +7,18 @@ from app.models.session import SessionCreate, Session, SessionStatus
 from app.services.supabase_service import supabase_service
 from app.services.reasoning_engine import reasoning_engine
 from app.utils.validators import validate_student_id
+from datetime import datetime
 
 router = APIRouter()
+
+
+def _is_valid_uuid(val: str) -> bool:
+    """Check if a string is a valid UUID."""
+    try:
+        UUID(val)
+        return True
+    except (ValueError, AttributeError, TypeError):
+        return False
 
 
 @router.post("/start", response_model=dict, status_code=status.HTTP_201_CREATED)
@@ -25,26 +35,49 @@ async def start_session(session_data: SessionCreate):
     try:
         # Validate student ID
         validate_student_id(session_data.student_id)
-        
-        # Check if case exists
-        case = await supabase_service.get_case(session_data.case_id)
-        if not case:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Clinical case not found"
+
+        # Check if this is a demo case (non-UUID string ID)
+        is_demo_case = not _is_valid_uuid(session_data.case_id)
+        case = None
+
+        if is_demo_case:
+            # For demo cases, create an in-memory session without database persistence
+            session_id = str(UUID(int=0))  # Dummy session ID for demo
+            case_id = session_data.case_id
+            session_status = "active"
+            started_at = datetime.now()
+            print(f"📌 Demo case session created in-memory for {case_id}")
+        else:
+            # For real cases from database
+            case_uuid = UUID(session_data.case_id)
+            case = await supabase_service.get_case(case_uuid)
+            if not case:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Clinical case not found"
+                )
+
+            # Create session in database
+            session = await supabase_service.create_session(
+                case_id=case_uuid,
+                student_id=session_data.student_id,
+                metadata=session_data.metadata
             )
-        
-        # Create session
-        session = await supabase_service.create_session(
-            case_id=session_data.case_id,
-            student_id=session_data.student_id,
-            metadata=session_data.metadata
-        )
-        
+            session_id = str(session.id)
+            case_id = str(session.case_id)
+            session_status = session.status
+            started_at = session.started_at
+
         # Generate initial greeting
-        initial_greeting = await reasoning_engine.generate_initial_greeting(
-            case_id=session_data.case_id
-        )
+        if is_demo_case:
+            # For demo cases, use a generic greeting since we don't have case data
+            initial_greeting = "Hi, thanks for seeing me. I'm not sure what's going on and would appreciate your help figuring this out."
+            print(f"📌 Using generic greeting for demo case")
+        else:
+            # For real cases, generate context-aware greeting
+            initial_greeting = await reasoning_engine.generate_initial_greeting(
+                case_id=case_uuid
+            )
 
         # Generate TTS audio for initial greeting
         from app.config import get_settings
@@ -65,19 +98,25 @@ async def start_session(session_data: SessionCreate):
         except Exception as e:
             print(f"⚠️  Failed to generate greeting audio: {str(e)}")
 
-        return {
-            "session_id": str(session.id),
-            "case_id": str(session.case_id),
-            "status": session.status,
-            "started_at": session.started_at.isoformat(),
+        # Build response with case info if available
+        response = {
+            "session_id": session_id,
+            "case_id": case_id,
+            "status": session_status,
+            "started_at": started_at.isoformat(),
             "initial_greeting": initial_greeting,
-            "greeting_audio_url": greeting_audio_url,
-            "case_info": {
+            "greeting_audio_url": greeting_audio_url
+        }
+
+        # Only include case_info if we have a case object (real cases from database)
+        if case:
+            response["case_info"] = {
                 "title": case.title,
                 "chief_complaint": case.chief_complaint,
                 "learning_objectives": case.learning_objectives
             }
-        }
+
+        return response
         
     except HTTPException:
         raise

@@ -46,10 +46,13 @@ class LiteratureCaseGenerator:
             Generated case with real literature findings
         """
         try:
+            logger.info(f"🔍 [START] Generating case for: {medical_condition}")
             logger.info(f"📚 Generating case from REAL medical literature for {medical_condition}")
 
             # Search PubMed for real cases - THIS IS REQUIRED
+            logger.info(f"🔎 Searching PubMed for: {medical_condition} case report")
             literature = await self.search_pubmed(f"{medical_condition} case report", max_results=3)
+            logger.info(f"📖 PubMed search returned {len(literature)} results")
 
             if not literature:
                 logger.error(f"❌ Could not find medical literature for {medical_condition}")
@@ -71,42 +74,32 @@ class LiteratureCaseGenerator:
                 "hard": "with complex presentation and multiple competing diagnoses"
             }.get(difficulty, "with moderate complexity")
 
-            prompt = f"""You are a medical education expert. Create a {difficulty} difficulty patient case based on real medical literature.
+            pmid_list = ', '.join([a['pmid'] for a in literature])
 
-REAL MEDICAL LITERATURE REFERENCES:
-{literature_text}
+            # Simplified prompt that forces JSON output
+            prompt = f"""GENERATE JSON ONLY. NO OTHER TEXT.
 
-INSTRUCTIONS:
-- Generate a REALISTIC clinical case for {medical_condition} {difficulty_hint}
-- Ground the case in the medical literature provided above
-- Include authentic clinical presentation, vital signs, and examination findings
-- List relevant differential diagnoses based on the presentation
-- Identify critical red flags not to miss
-- Include educational learning objectives
+Condition: {medical_condition}
+Difficulty: {difficulty}
+Literature: PMIDs {pmid_list}
 
-IMPORTANT: Return ONLY valid JSON (no markdown, no code blocks, no extra text):
-{{
-  "title": "Appropriate Case Title",
-  "chief_complaint": "Patient's presenting complaint",
-  "clinical_scenario": "Detailed clinical presentation with vital signs and findings",
-  "differential_diagnoses": ["diagnosis1", "diagnosis2", "diagnosis3"],
-  "red_flags": ["critical finding to not miss"],
-  "learning_objectives": ["what student should learn"],
-  "literature_reference": "PMIDs: {', '.join([a['pmid'] for a in literature])}"
-}}"""
+{{"title":"Case title for {medical_condition}","chief_complaint":"Patient age/gender with main symptom","clinical_scenario":"Patient speaking naturally about symptoms. Example format: I started feeling {medical_condition} symptoms about X days ago. I have... What I notice is... It's worse when... etc."}}"""
 
             # Call K2 to generate case
+            logger.info(f"🤖 Calling K2 to synthesize case from literature...")
             result = await self.kimi.complete(
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
                 max_tokens=1500
             )
+            logger.info(f"✅ K2 returned response")
 
             if not result or not result.get("content"):
-                logger.error("Failed to generate case with K2")
+                logger.error("❌ Failed to generate case with K2 - no content in response")
                 return None
 
             response = result["content"]
+            logger.info(f"📝 K2 response length: {len(response)} chars")
 
             # Parse the JSON response
             try:
@@ -121,12 +114,14 @@ IMPORTANT: Return ONLY valid JSON (no markdown, no code blocks, no extra text):
                     case_json = response[json_start:json_end]
                     case = json.loads(case_json)
                     logger.info(f"✅ Generated case: {case.get('title', 'Unknown')}")
+                    # Add literature reference
+                    case['literature_reference'] = f"PMIDs: {pmid_list}"
                     return case
                 else:
-                    logger.error(f"Could not find JSON in K2 response: {response[:200]}")
+                    logger.error(f"❌ Could not find JSON in K2 response: {response[:200]}")
                     return None
             except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse JSON from K2 response: {str(e)}")
+                logger.error(f"❌ Failed to parse JSON from K2 response: {str(e)}")
                 logger.error(f"Response was: {response[:300]}")
                 return None
 

@@ -53,10 +53,23 @@ async def generate_case_from_literature(request: CaseGenerationRequest):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to generate case from literature"
             )
-        
-        # Optionally save generated case to Supabase
-        # await supabase_service.create_case(case)
-        
+
+        # Save generated case to Supabase so it can be used for interviews
+        try:
+            from app.models.case import CaseCreate
+            case_to_save = CaseCreate(
+                title=case.get("title"),
+                chief_complaint=case.get("chief_complaint"),
+                clinical_scenario=case.get("clinical_scenario"),
+                learning_objectives=case.get("learning_objectives", []),
+                case_type="literature-generated"
+            )
+            saved_case = await supabase_service.create_case(case_to_save)
+            case["id"] = saved_case.id  # Use the database ID
+        except Exception as e:
+            print(f"Warning: Could not save case to database: {str(e)}")
+            # Continue anyway - case can still be used in memory
+
         return {
             "case": case,
             "source": "dedalus",

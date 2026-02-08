@@ -95,10 +95,14 @@ export function MockInterview() {
       if (response.case) {
         // Convert to CasePublic format and add to cases
         const generatedCase: CasePublic = {
-          id: `dedalus-${Date.now()}`,
+          id: response.case.id || `dedalus-${Date.now()}`,  // Use database ID if available
           title: response.case.title,
           chief_complaint: response.case.chief_complaint,
+          clinical_scenario: response.case.clinical_scenario,
+          differential_diagnoses: response.case.differential_diagnoses,
+          red_flags: response.case.red_flags,
           learning_objectives: response.case.learning_objectives,
+          medical_images: response.case.medical_images,
         };
 
         setCases((prev) => [generatedCase, ...prev]);
@@ -428,7 +432,9 @@ export function MockInterview() {
               <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <div>
                 <p className="text-sm text-red-300 font-medium">Error</p>
-                <p className="text-sm text-red-400">{error}</p>
+                <p className="text-sm text-red-400">
+                  {typeof error === 'string' ? error : error?.message || 'An error occurred'}
+                </p>
               </div>
             </div>
           </Card>
@@ -531,18 +537,27 @@ export function MockInterview() {
               <Card key={caseData.id} className="p-6 hover:border-blue-500/50 transition-all border border-slate-700/50 bg-slate-900/30">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-white mb-2">{caseData.title}</h3>
-                    <div className="text-sm text-gray-400">
-                      <span className="font-medium">Chief Complaint:</span> {caseData.chief_complaint}
-                    </div>
+                    <h3 className="text-xl font-semibold text-white mb-2">{typeof caseData.title === 'string' ? caseData.title : 'Case'}</h3>
+                    {typeof caseData.chief_complaint === 'string' && (
+                      <div className="text-sm text-gray-400">
+                        <span className="font-medium">Chief Complaint:</span> {caseData.chief_complaint}
+                      </div>
+                    )}
                   </div>
 
-                  {caseData.learning_objectives && caseData.learning_objectives.length > 0 && (
+                  {caseData.clinical_scenario && typeof caseData.clinical_scenario === 'string' && (
+                    <div className="text-sm text-gray-400">
+                      <span className="font-medium">Clinical Scenario:</span>
+                      <p className="mt-1 text-xs leading-relaxed">{caseData.clinical_scenario.substring(0, 150)}...</p>
+                    </div>
+                  )}
+
+                  {Array.isArray(caseData.learning_objectives) && caseData.learning_objectives.length > 0 && (
                     <div className="text-sm text-gray-400">
                       <span className="font-medium">Learning Objectives:</span>
                       <ul className="mt-1 space-y-1">
                         {caseData.learning_objectives.slice(0, 2).map((obj, idx) => (
-                          <li key={idx} className="text-xs">• {obj}</li>
+                          <li key={idx} className="text-xs">• {typeof obj === 'string' ? obj : JSON.stringify(obj)}</li>
                         ))}
                       </ul>
                     </div>

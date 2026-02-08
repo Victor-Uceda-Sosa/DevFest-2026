@@ -14,7 +14,7 @@ class SessionStatus(str, Enum):
 
 class SessionCreate(BaseModel):
     """Model for creating a new session."""
-    case_id: UUID
+    case_id: str  # Accept both UUID strings and regular strings (for demo cases)
     student_id: str
     metadata: Optional[Dict[str, Any]] = {}
 
