@@ -47,7 +47,7 @@ async def interact(
     print("\n" + "="*80)
     print("🎙️  AUDIO INTERACTION REQUEST RECEIVED")
     print(f"Session ID: {session_id}")
-    print(f"Case ID: {case_id}")  # DEBUG
+    print(f"Case ID: {case_id} (type: {type(case_id).__name__})")  # DEBUG
     print(f"Has audio file: {audio_file is not None}")
     print(f"Has text input: {text_input is not None}")
     print("="*80)

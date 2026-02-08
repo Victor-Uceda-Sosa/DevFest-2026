@@ -115,14 +115,17 @@ class ReasoningEngine:
                     "red_flags": demo_case_data.get("red_flags", []),
                 }
 
+                print(f"✓ Case context prepared: {case_context['chief_complaint'][:50]}...")
                 logger.info(f"Using demo case context: {case_context['chief_complaint'][:50]}...")
 
                 # Use Kimi to analyze and respond with actual case context
+                print(f"🔄 Calling K2 with case context...")
                 result = await kimi_service.analyze_clinical_reasoning(
                     student_input=student_input,
                     case_context=case_context,
                     conversation_history=[]
                 )
+                print(f"✓ K2 response received")
 
                 logger.info(f"Result type: {type(result)}, Result: {result}")
 
