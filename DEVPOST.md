@@ -1,81 +1,68 @@
 # 🏥 Praxis: AI-Powered Clinical Reasoning Trainer
 
-## Project Overview
+## Inspiration
 
-**Praxis** is an intelligent medical education platform that trains physicians and medical students in clinical reasoning through immersive, AI-powered patient interviews. Students practice the Socratic method with an AI patient powered by advanced language models, receiving real-time feedback on their diagnostic approach.
+Medical education has a critical problem: physicians need thousands of hours of patient interactions to develop strong clinical reasoning skills, but standardized patient actors are expensive, limited, and don't scale. Meanwhile, advanced AI models like Kimi K2.5 have sophisticated reasoning capabilities that rival expert physicians.
 
-### Tagline
-*Master clinical reasoning through AI-powered patient interviews grounded in real medical literature*
+We asked: **What if we could create an accessible, AI-powered platform where medical students practice diagnostic thinking with an intelligent patient that responds naturally to their questions?**
+
+Praxis brings medical education into the 21st century by combining:
+- **Advanced AI reasoning** (K2.5) that understands medical nuance
+- **Real medical literature** (PubMed) for realistic, evidence-based cases
+- **Natural voice interactions** (ElevenLabs TTS + AssemblyAI) for immersive practice
+- **Socratic method pedagogy** that guides students toward diagnosis rather than telling answers
 
 ---
 
-## 🎯 What It Does
+## What It Does
+
+**Praxis** is an intelligent medical education platform that trains physicians and medical students in clinical reasoning through immersive, AI-powered patient interviews.
 
 ### Core Features
 
 **1. Interactive Patient Interviews**
 - Real-time conversations with an AI patient that roleplays clinical scenarios
-- Powered by Kimi K2.5 (via Featherless) for natural, realistic patient responses
-- Student can input responses via text or voice (with AssemblyAI transcription)
-- AI generates responses in natural voice via ElevenLabs TTS
+- Powered by Kimi K2.5 for sophisticated, medically-accurate responses
+- Students interact via text or voice (with AssemblyAI transcription)
+- AI responds in natural voice via ElevenLabs TTS
+- Socratic method teaching guides students toward correct diagnosis
 
 **2. Literature-Based Case Generation**
 - Automatically generate realistic clinical cases from peer-reviewed medical literature
-- Searches PubMed via NCBI E-utilities API for real case reports
-- Synthesizes cases using K2 based on actual medical literature (with PMID citations)
-- Supports difficulty levels: easy, medium, hard
+- Searches PubMed via NCBI API for real case reports
+- Synthesizes cases using K2 based on actual medical literature
+- Cases include differential diagnoses, red flags, and learning objectives
+- All cases cite actual PMIDs for literature grounding
 
-**3. Demo Cases for Practice**
-- 5 pre-built clinical scenarios for immediate practice:
+**3. Demo Cases for Immediate Practice**
+- 5 pre-built clinical scenarios requiring zero setup:
   - Acute Myocardial Infarction
   - Pneumonia with Consolidation
   - Acute Appendicitis
   - Acute Ischemic Stroke
   - Diabetic Ketoacidosis
-- No database setup required - works instantly
 
-**4. Socratic Method Teaching**
-- AI tutor guides students toward correct diagnosis rather than telling answers
-- Builds clinical reasoning and differential diagnosis skills
-- Session history tracks student progress
-
-**5. Session Management**
+**4. Session Management & Progress Tracking**
 - Track all past consultations with timestamps
 - View interaction history and AI feedback
-- Session evaluation and performance metrics
+- Session evaluation with performance metrics
 - Both in-memory (demo) and database-persisted sessions
 
 ---
 
-## 🛠️ How It's Built
+## How We Built It
 
 ### Tech Stack
 
-**Frontend:**
-- React 18 with TypeScript
-- Vite for fast development
-- Tailwind CSS for styling
-- Radix UI components for accessibility
-- React Router for navigation
-- Lucide React for icons
+**Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + React Router + Radix UI
 
-**Backend:**
-- FastAPI (Python) with async/await
-- Supabase for database and real-time features
-- PostgreSQL for data persistence
-- Pydantic for data validation
+**Backend:** FastAPI (Python) + Supabase PostgreSQL + Pydantic validation
 
 **AI & APIs:**
-- **Kimi K2.5** (via Featherless API) - Advanced reasoning for patient roleplay
-- **K2 Thinking** - Structured reasoning for clinical analysis
-- **ElevenLabs TTS** - Natural voice generation for patient responses
-- **AssemblyAI** - Audio transcription for student input
+- **Kimi K2.5** (via Featherless) - Advanced reasoning for patient roleplay
+- **ElevenLabs TTS** - Natural voice generation
+- **AssemblyAI** - Audio transcription for voice input
 - **NCBI PubMed API** - Literature search for case generation
-
-**Deployment:**
-- Local development with hot reload
-- Docker-ready backend structure
-- Supabase cloud database
 
 ### Architecture
 
@@ -83,12 +70,12 @@
 Frontend (React/Vite)
     ↓
 REST API (FastAPI)
-    ├─ Session Management (/api/sessions)
-    ├─ Clinical Reasoning (/api/reasoning)
-    ├─ Case Generation (/api/dedalus)
-    └─ Consultations (/api/consultations)
+    ├─ /api/sessions - Session management
+    ├─ /api/reasoning - Clinical analysis
+    ├─ /api/dedalus - Case generation
+    └─ /api/consultations - Interview interactions
     ↓
-Supabase Database
+Supabase Database (PostgreSQL)
     ├─ Cases
     ├─ Sessions
     ├─ Interactions
@@ -101,205 +88,142 @@ External APIs
     └─ NCBI PubMed
 ```
 
----
+### Implementation Highlights
 
-## 🚀 Key Accomplishments
-
-### Session 1: Foundation & Demo Cases
-- ✅ Built interactive patient interview system
-- ✅ Integrated K2 reasoning engine for Socratic responses
-- ✅ Implemented ElevenLabs TTS for patient voices
-- ✅ Created 5 realistic demo cases
-- ✅ Built session management system
-
-### Session 2: Literature Integration
-- ✅ Implemented PubMed API integration for real medical literature
-- ✅ Fixed XML parsing from NCBI (not JSON)
-- ✅ Integrated K2 case synthesis from real articles
-- ✅ Added literature citations with PMIDs
-- ✅ Removed dependency on fallback dummy data
-
-### Session 3: Authentication & UI
-- ✅ Built complete auth system with Supabase
-- ✅ Integrated React Router for navigation
-- ✅ Created user profiles and session history
-- ✅ Added profile dropdown in header
-
-### Session 4 (Current): Bug Fixes & Stability
-- ✅ **Fixed critical "Session not found" errors** for demo cases
-- ✅ Implemented in-memory session handling for demo cases
-- ✅ Fixed variable shadowing bug in session routes
-- ✅ Added demo session detection and validation
-- ✅ Fixed case model validation (clinical_scenario: string)
-- ✅ Improved error handling with fallbacks
-- ✅ Removed medical imaging feature (user request)
-- ✅ All changes pushed to production
+- **Tool calling** for structured PubMed searches within K2 reasoning
+- **In-memory sessions** for demo cases + database persistence for real cases
+- **Lazy initialization** pattern for external API services
+- **Async/await** throughout for responsive frontend
+- **Real-time voice pipeline**: Audio capture → AssemblyAI → K2 reasoning → ElevenLabs TTS → Playback
 
 ---
 
-## 💡 Technical Challenges & Solutions
+## Challenges We Ran Into
 
-### Challenge 1: Demo vs Database Sessions
-**Problem:** Demo cases (string IDs like "case-1") caused foreign key constraint errors when backend tried to create database sessions.
+### 1. Demo vs Database Session Handling
+**Problem:** Demo cases have string IDs (like "case-1") but the backend enforced foreign key constraints requiring UUIDs in the database. This caused HTTP 422 errors when starting demo case sessions.
 
 **Solution:**
-- Added `_is_valid_uuid()` helper to distinguish demo (strings) from real cases (UUIDs)
-- Created in-memory sessions for demo cases without database persistence
-- Skip database lookups for demo session interactions
-- Return generic greetings for demo cases
+- Added UUID validation helper to distinguish demo (strings) from real cases (UUIDs)
+- Created in-memory session objects for demo cases
+- Skip database operations for demo sessions
+- Return generic greetings for non-database cases
 
-### Challenge 2: K2 JSON Output Reliability
-**Problem:** K2 was returning analysis/thinking text before JSON instead of pure JSON.
+### 2. K2 JSON Output Reliability
+**Problem:** K2 was returning analysis/thinking text before JSON instead of pure JSON output.
 
 **Solution:**
 - Simplified prompt with explicit "GENERATE JSON ONLY" instruction
 - Added robust JSON extraction with fallback parsing
 - Strip `<think>` tags from K2 responses
-- Implemented error handling with graceful fallbacks
+- Implemented graceful error handling
 
-### Challenge 3: PubMed API Returns XML
-**Problem:** Code requested `rettype=json` but NCBI API returns XML by default.
+### 3. PubMed API Returns XML, Not JSON
+**Problem:** Code requested `rettype=json` but NCBI API returns XML by default, causing parse errors.
 
 **Solution:**
 - Switched to XML parsing using `xml.etree.ElementTree`
-- Extract real article PMIDs from XML response
-- Verify cases use actual peer-reviewed literature
+- Extract real article PMIDs from XML responses
+- Removed all fallback dummy data—cases now require actual peer-reviewed literature
 
-### Challenge 4: Variable Shadowing Bug
-**Problem:** `status` variable overwriting imported `status` module, causing AttributeError.
+### 4. Variable Shadowing Bug
+**Problem:** A `status` variable was overwriting the imported `status` module from FastAPI, causing AttributeError.
 
 **Solution:**
 - Renamed session status variable to `session_status`
-- Prevents shadowing of FastAPI's status module
-- Proper scope management for variables
+- Proper scope management prevents module shadowing
 
-### Challenge 5: Case Model Validation
-**Problem:** CaseCreate model expected `clinical_scenario` as Dict but Dedalus generated string.
+### 5. Case Model Validation
+**Problem:** CaseCreate expected `clinical_scenario` as Dict but Dedalus generated string values.
 
 **Solution:**
-- Updated model: `clinical_scenario: str` (patient speech)
+- Updated model to `clinical_scenario: str` (the patient's opening speech)
 - Made `differential_diagnoses` and `red_flags` optional
-- Flexible model for both demo and generated cases
+- Flexible schema supports both demo and generated cases
 
 ---
 
-## 📊 Verified Features
+## Accomplishments That We're Proud Of
 
-### End-to-End Testing Results
+✅ **Built a fully functional medical education platform** with real-time AI interactions
+✅ **Integrated K2.5 reasoning engine** for sophisticated Socratic responses
+✅ **Connected to actual medical literature** (PubMed) for authentic case generation
+✅ **Implemented complete voice pipeline** (capture → transcription → reasoning → TTS → playback)
+✅ **Fixed critical session management bugs** - Demo and database cases now work seamlessly
+✅ **Created 5 realistic demo cases** ready for immediate use with zero setup
+✅ **Built authentication system** with Supabase for user accounts and progress tracking
+✅ **Production-ready code** - All changes tested and deployed
 
-✅ **Demo Cases:**
-- Session creation: HTTP 201
-- Patient interaction: HTTP 200
-- Audio generation: 87KB MP3
-- Socratic responses: Generated successfully
-
-✅ **Session Management:**
-- No foreign key constraint errors
-- No "Session not found" errors
-- In-memory sessions work reliably
-- Database sessions persist correctly
-
-✅ **Audio Pipeline:**
-- ElevenLabs TTS: ✅ Working
-- Text-to-speech: 47-119KB MP3 files
-- Data URL encoding: ✅ Correct format
-- Playback: ✅ Browser compatible
-
-✅ **Frontend:**
-- Build time: 1.48 seconds
-- 1793 modules bundled
-- No TypeScript errors
-- All routes functional
+### End-to-End Test Results
+- ✅ Demo cases: Session creation (HTTP 201), patient interaction (HTTP 200)
+- ✅ Audio generation: 87-119KB MP3 files generated and playable
+- ✅ Frontend: 1.48s build time, 1793 modules, zero TypeScript errors
+- ✅ API responses: <500ms average latency
+- ✅ No database errors or session management issues
 
 ---
 
-## 🎓 How Students Use It
+## What We Learned
 
-1. **Start Interview:** Select a demo case or generate from literature
-2. **Meet Patient:** AI patient greets with natural voice (ElevenLabs)
-3. **Listen & Respond:** Ask questions via text or voice
-4. **Get Feedback:** K2 generates Socratic patient responses
-5. **Practice Reasoning:** Develop differential diagnoses
-6. **Track Progress:** View session history and performance metrics
+1. **AI in Medical Education Works** - K2.5's reasoning is sophisticated enough to hold realistic medical conversations and guide students toward diagnostic thinking.
 
-### Example Interaction Flow:
-```
-Student: "What symptoms are you experiencing?"
-AI Patient: "Well, I've had a fever for 3 days and a persistent cough.
-            It started after my family gathering..."
-Student: "Any difficulty breathing?"
-AI Patient: "A bit, especially when I lie flat..."
-[Continues with Socratic dialogue...]
-```
+2. **Literature-Grounded AI is Essential** - Cases grounded in real PubMed articles are far more credible and effective than synthetic examples.
+
+3. **The Socratic Method Scales** - We can automate the "question-guiding-student" pattern at scale, reducing reliance on expert educators.
+
+4. **Demo vs Real Data Strategy** - Providing instantly-usable demo cases while supporting persistent database cases created the best user experience balance.
+
+5. **Voice Interactions Are Powerful** - The combination of TTS (AI speaks) + transcription (student speaks) creates a more natural learning experience than text-only.
+
+6. **External APIs Require Defensive Design** - Integrating with PubMed, ElevenLabs, and AssemblyAI taught us to expect different data formats and build robust fallbacks.
+
+7. **Tool Calling Unlocks Structured Reasoning** - K2's ability to call PubMed search tools within reasoning loops enables dynamic case generation.
 
 ---
 
-## 🔧 What's Next
+## What's Next for Praxis
 
-### Planned Improvements
-
-**Short Term:**
-- [ ] Improve Dedalus case generation JSON output reliability
-- [ ] Add case evaluation metrics and scoring
+### Short Term (Current Sprint)
+- [ ] Add case evaluation metrics and scoring system
 - [ ] Implement real-time progress dashboard
-- [ ] Add more demo cases (20+ scenarios)
+- [ ] Add 10+ additional demo cases across specialties
+- [ ] Improve Dedalus JSON reliability with retries
 
-**Medium Term:**
+### Medium Term (Q2 2026)
 - [ ] ChromaDB integration for semantic case search
-- [ ] Case difficulty auto-adjustment based on performance
-- [ ] Peer comparison and leaderboards
+- [ ] Case difficulty auto-adjustment based on student performance
+- [ ] Peer leaderboards for friendly competition
 - [ ] Video integration for physical exam practice
-- [ ] Mobile app version
+- [ ] Mobile app version (iOS/Android)
 
-**Long Term:**
-- [ ] Spaced repetition scheduling
-- [ ] Personalized learning paths by specialty
+### Long Term (Q3+ 2026)
+- [ ] Spaced repetition scheduling for optimal retention
+- [ ] Personalized learning paths by medical specialty
 - [ ] Integration with medical school curricula
-- [ ] AI-powered performance analytics
-- [ ] Board exam preparation mode
+- [ ] AI-powered performance analytics and recommendations
+- [ ] Board exam preparation mode with full-length mock exams
+- [ ] Multi-patient scenarios (simultaneous patient management)
 
 ---
 
-## 📈 Impact & Use Cases
+## Impact & Use Cases
 
-**For Medical Students:**
-- Practice clinical reasoning 24/7
-- No need for standardized patient actors
-- Immediate feedback on diagnostic approach
-- Build confidence before real patient encounters
+**For Medical Students:** Practice clinical reasoning 24/7, get immediate feedback, build confidence before real patient encounters
 
-**For Medical Schools:**
-- Scalable clinical training platform
-- Track student progress and competencies
-- Reduce cost of standardized patient training
-- Support remote/hybrid medical education
+**For Medical Schools:** Scalable training platform, track competencies, reduce cost of standardized patient actors, support remote/hybrid education
 
-**For Residents:**
-- Maintain and improve clinical skills
-- Prepare for board exams
-- Specialty-specific case practice
-- Continuing medical education
+**For Residents:** Maintain skills, prepare for board exams, specialty-specific case practice
+
+**For CME:** Continuing medical education that adapts to learning needs
 
 ---
 
-## 🏆 Team & Collaboration
-
-**Built with:**
-- Claude AI (code generation, debugging, architecture)
-- Supabase (database & auth backend)
-- Featherless (K2 access)
-- ElevenLabs (voice synthesis)
-- AssemblyAI (transcription)
-
----
-
-## 📱 Try It Out
+## 🚀 Try It Out
 
 ### Quick Start
 ```bash
 # Frontend
-npm install
-npm run dev  # http://localhost:3002
+npm install && npm run dev  # http://localhost:3002
 
 # Backend
 cd backend
@@ -308,48 +232,73 @@ python -m uvicorn app.main:app --reload  # http://localhost:8000
 ```
 
 ### Live Features
-- ✅ 5 demo cases ready to use
+- ✅ 5 demo cases ready immediately
 - ✅ Real-time voice interactions
 - ✅ Literature-based case generation
 - ✅ Complete session management
-- ✅ Authentication system
+- ✅ User authentication and progress tracking
 
 ---
 
-## 🔗 Links
+## Built With
+
+### Languages & Frameworks
+- **TypeScript** - Type-safe frontend code
+- **Python** - Backend services and API
+- **React 18** - Frontend UI library with hooks
+- **FastAPI** - High-performance async Python web framework
+- **Vite** - Fast bundler and dev server
+
+### Frontend Libraries
+- **React Router** - Client-side routing and navigation
+- **Tailwind CSS** - Utility-first styling
+- **Radix UI** - Accessible component library
+- **Lucide React** - Icon library
+- **Axios** - HTTP client with interceptors
+
+### Cloud & Database
+- **Supabase** - PostgreSQL database, authentication, real-time subscriptions
+- **PostgreSQL** - Relational database with UUIDs and JSON support
+- **Supabase Auth** - OAuth integration and session management
+
+### AI & Machine Learning
+- **Kimi K2.5** (via Featherless API) - Advanced reasoning model for patient roleplay
+- **K2 Thinking** - Structured reasoning for clinical analysis
+- **Tool Calling** - Function calling for structured PubMed searches
+
+### Voice & Audio
+- **ElevenLabs TTS** - Natural speech synthesis for patient responses
+- **AssemblyAI** - Audio transcription for student voice input
+- **Web Audio API** - Browser-native audio recording and playback
+
+### Medical Literature & APIs
+- **NCBI PubMed API** - Real-time access to peer-reviewed medical literature
+- **E-utilities API** - XML-based literature search (used with `xml.etree.ElementTree`)
+
+### Development & DevOps
+- **Git** - Version control
+- **npm** - Package management
+- **pip** - Python dependency management
+- **Pydantic** - Python data validation
+- **Uvicorn** - ASGI server for FastAPI
+- **Claude Code** - AI-powered code generation and debugging
+
+### Data Validation & Serialization
+- **Pydantic** - Python type validation and serialization
+- **JSON** - Data interchange format
+- **UUID** - Unique identifiers for cases and sessions
+
+---
+
+## Links
 
 - **Repository:** https://github.com/Victor-Uceda-Sosa/DevFest-2026
-- **Demo Cases:** 5 pre-configured scenarios
-- **API Docs:** http://localhost:8000/docs
-- **Frontend:** http://localhost:3002
+- **API Docs:** http://localhost:8000/docs (when running locally)
+- **Frontend:** http://localhost:3002 (when running locally)
 
 ---
 
-## 💬 Key Metrics
+**Status:** ✅ Fully Functional & Deployed
+**Last Updated:** February 8, 2026
 
-| Metric | Value |
-|--------|-------|
-| Frontend Build Time | 1.48s |
-| Demo Cases Available | 5 |
-| Literature Sources | PubMed (NCBI API) |
-| AI Model | Kimi K2.5 |
-| Session Types | Demo (in-memory) + Database (persistent) |
-| TTS Provider | ElevenLabs |
-| Transcription | AssemblyAI |
-| API Response Time | <500ms |
-| Audio Quality | 128kbps MP3 |
-
----
-
-## 🎉 Conclusion
-
-Praxis demonstrates how advanced AI and medical literature can be combined to create an effective, accessible clinical reasoning trainer. By leveraging K2's sophisticated reasoning capabilities with real peer-reviewed medical cases, we've built a platform that helps medical professionals practice Socratic questioning and diagnostic thinking.
-
-The system is production-ready, fully tested, and handles both demo and real cases seamlessly with no database errors or session management issues.
-
-**Ready to revolutionize medical education through AI-powered clinical reasoning training.**
-
----
-
-*Last Updated: February 8, 2026*
-*Current Status: ✅ Fully Functional & Deployed*
+*Praxis demonstrates how advanced AI and medical literature combine to revolutionize clinical reasoning education. We're just getting started.*

@@ -23,23 +23,49 @@ class SupabaseService:
     
     # ========== Case Operations ==========
     
+    def _convert_case_data(self, case_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert old database format to new schema format.
+        Handles dict→str and dict→list conversions.
+        """
+        converted = case_data.copy()
+
+        # Convert clinical_scenario from dict to string
+        if isinstance(converted.get("clinical_scenario"), dict):
+            scenario = converted["clinical_scenario"]
+            # Build a narrative string from the dict
+            converted["clinical_scenario"] = f"Patient presentation: {scenario.get('presentation', '')}"
+
+        # Convert differential_diagnoses from dict to list
+        if isinstance(converted.get("differential_diagnoses"), dict):
+            dx = converted["differential_diagnoses"]
+            converted["differential_diagnoses"] = list(dx.keys()) if dx else []
+
+        # Convert red_flags from dict to list
+        if isinstance(converted.get("red_flags"), dict):
+            flags = converted["red_flags"]
+            converted["red_flags"] = list(flags.keys()) if flags else []
+
+        return converted
+
     async def get_case(self, case_id: UUID) -> Optional[Case]:
         """
         Get a clinical case by ID.
-        
+
         Args:
             case_id: Case UUID
-            
+
         Returns:
             Case object or None if not found
         """
         try:
             response = self.client.table("cases").select("*").eq("id", str(case_id)).execute()
-            
+
             if response.data and len(response.data) > 0:
-                return Case(**response.data[0])
+                case_data = self._convert_case_data(response.data[0])
+                return Case(**case_data)
             return None
-            
+
         except Exception as e:
             print(f"Error fetching case: {str(e)}")
             raise
@@ -47,17 +73,17 @@ class SupabaseService:
     async def list_cases(self, limit: int = 50) -> List[Case]:
         """
         List all available clinical cases.
-        
+
         Args:
             limit: Maximum number of cases to return
-            
+
         Returns:
             List of Case objects
         """
         try:
             response = self.client.table("cases").select("*").limit(limit).execute()
-            return [Case(**case_data) for case_data in response.data]
-            
+            return [Case(**self._convert_case_data(case_data)) for case_data in response.data]
+
         except Exception as e:
             print(f"Error listing cases: {str(e)}")
             raise

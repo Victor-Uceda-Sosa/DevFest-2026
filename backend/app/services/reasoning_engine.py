@@ -67,7 +67,8 @@ class ReasoningEngine:
     async def generate_response(
         self,
         session_id: UUID,
-        student_input: str
+        student_input: str,
+        case_id: str = None  # Optional: explicitly pass case_id for demo sessions
     ) -> Dict[str, Any]:
         """
         Generate tutor response to student input using Socratic method.
@@ -75,6 +76,7 @@ class ReasoningEngine:
         Args:
             session_id: Session UUID
             student_input: Student's question or response
+            case_id: Optional case ID (used for demo sessions)
 
         Returns:
             Dictionary containing:
@@ -85,19 +87,40 @@ class ReasoningEngine:
         is_demo = str(session_id) == "00000000-0000-0000-0000-000000000000"
 
         if is_demo:
-            # For demo sessions, generate a generic Socratic response
-            logger.info("📌 Demo session detected - generating generic response")
+            # For demo sessions, load actual case data
+            print(f"📌 DEMO SESSION DEBUG: case_id={case_id}, type={type(case_id)}")
+            logger.info("📌 Demo session detected - loading demo case data")
+            from app.data.demo_cases import get_demo_case
 
             try:
-                # Use Kimi to analyze and respond with generic context
-                result = await kimi_service.analyze_clinical_reasoning(
-                    student_input=student_input,
-                    case_context={
+                # Get the demo case data (case_id should be like "case-1")
+                # If case_id is not provided, default to case-1
+                used_case_id = case_id or "case-1"
+                print(f"📌 DEMO SESSION DEBUG: Loading case {used_case_id}")
+                demo_case_data = get_demo_case(used_case_id)
+
+                if not demo_case_data:
+                    logger.warning(f"Demo case {case_id} not found, using generic fallback")
+                    demo_case_data = {
                         "clinical_scenario": "Patient presenting with acute symptoms",
                         "chief_complaint": "Patient-reported chief complaint",
                         "differential_diagnoses": [],
                         "red_flags": [],
-                    },
+                    }
+
+                case_context = {
+                    "clinical_scenario": demo_case_data["clinical_scenario"],
+                    "chief_complaint": demo_case_data["chief_complaint"],
+                    "differential_diagnoses": demo_case_data.get("differential_diagnoses", []),
+                    "red_flags": demo_case_data.get("red_flags", []),
+                }
+
+                logger.info(f"Using demo case context: {case_context['chief_complaint'][:50]}...")
+
+                # Use Kimi to analyze and respond with actual case context
+                result = await kimi_service.analyze_clinical_reasoning(
+                    student_input=student_input,
+                    case_context=case_context,
                     conversation_history=[]
                 )
 
@@ -118,6 +141,9 @@ class ReasoningEngine:
                 }
             except Exception as e:
                 logger.error(f"Error in demo session response generation: {str(e)}")
+                print(f"❌ DEMO SESSION ERROR: {type(e).__name__}: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 # Fallback for demo
                 return {
                     "tutor_response": "I'm listening. Can you describe what's happening?",

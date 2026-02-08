@@ -16,21 +16,28 @@ def get_patient_system_prompt(case_data: dict, difficulty: str = "medium") -> st
         System prompt for K2 to roleplay as the patient
     """
     chief_complaint = case_data.get("chief_complaint", "")
-    clinical_scenario = case_data.get("clinical_scenario", {})
-    differential_diagnoses = case_data.get("differential_diagnoses", {})
+    clinical_scenario = case_data.get("clinical_scenario", "")
+    differential_diagnoses = case_data.get("differential_diagnoses", [])
     red_flags = case_data.get("red_flags", [])
 
-    # Extract patient info from clinical_scenario
-    patient_info = clinical_scenario.get("patient_info", {})
-    patient_name = patient_info.get("name", "Patient")
-    patient_age = patient_info.get("age", "unknown")
-    patient_gender = patient_info.get("gender", "unknown")
+    # clinical_scenario is now a string (narrative), not a dict
+    # Extract basic info from chief_complaint if available
+    patient_name = "Patient"
+    patient_age = "unknown"
+    patient_gender = "unknown"
 
-    # Extract symptoms and context
-    symptoms = clinical_scenario.get("symptoms", [])
-    medical_history = clinical_scenario.get("medical_history", [])
-    current_medications = clinical_scenario.get("current_medications", [])
-    timeline = clinical_scenario.get("timeline", "")
+    # Try to extract age/gender from chief_complaint if structured like "45-year-old male"
+    import re
+    age_gender_match = re.search(r'(\d+)-year-old\s+(male|female|woman|man)', chief_complaint, re.IGNORECASE)
+    if age_gender_match:
+        patient_age = age_gender_match.group(1)
+        patient_gender = age_gender_match.group(2)
+
+    # Symptoms and context are embedded in the narrative scenario
+    symptoms = []  # Will be extracted from clinical_scenario narrative
+    medical_history = []  # Will be extracted from clinical_scenario narrative
+    current_medications = []  # Will be extracted from clinical_scenario narrative
+    timeline = ""  # Will be extracted from clinical_scenario narrative
 
     # Determine difficulty-based traits
     difficulty_traits = {
@@ -65,6 +72,9 @@ def get_patient_system_prompt(case_data: dict, difficulty: str = "medium") -> st
     # Build red flags (things the student might ask about)
     red_flags_text = "\n".join([f"  - {flag}" for flag in red_flags]) if red_flags else "  (None)"
 
+    # Build differential diagnoses list
+    dx_text = "\n".join([f"  - {dx}" for dx in differential_diagnoses]) if differential_diagnoses else "  (None)"
+
     return f"""You are roleplaying as {patient_name}, a {patient_age}-year-old {patient_gender} patient in a medical consultation.
 
 PATIENT IDENTITY:
@@ -74,6 +84,12 @@ PATIENT IDENTITY:
 
 CHIEF COMPLAINT:
 {chief_complaint}
+
+CLINICAL SCENARIO (Your presentation):
+{clinical_scenario}
+
+POSSIBLE DIAGNOSES (for doctor's reference, NOT for you to mention unless asked):
+{dx_text}
 
 CURRENT SYMPTOMS:
 {symptoms_text}

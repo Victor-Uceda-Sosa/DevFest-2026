@@ -24,7 +24,8 @@ def _is_demo_session(session_id: str) -> bool:
 async def interact(
     session_id: str = Form(...),
     audio_file: Optional[UploadFile] = File(None),
-    text_input: Optional[str] = Form(None)
+    text_input: Optional[str] = Form(None),
+    case_id: Optional[str] = Form(None)  # For demo sessions
 ):
     """
     Process student input (audio or text) and generate tutor response.
@@ -46,6 +47,7 @@ async def interact(
     print("\n" + "="*80)
     print("🎙️  AUDIO INTERACTION REQUEST RECEIVED")
     print(f"Session ID: {session_id}")
+    print(f"Case ID: {case_id}")  # DEBUG
     print(f"Has audio file: {audio_file is not None}")
     print(f"Has text input: {text_input is not None}")
     print("="*80)
@@ -180,7 +182,8 @@ async def interact(
         try:
             response_data = await reasoning_engine.generate_response(
                 session_id=session_uuid,
-                student_input=student_input_text
+                student_input=student_input_text,
+                case_id=case_id  # Pass case_id for demo sessions
             )
             
             tutor_response = response_data["tutor_response"]
@@ -323,7 +326,8 @@ async def interact(
 async def interact_stream(
     session_id: str = Form(...),
     audio_file: Optional[UploadFile] = File(None),
-    text_input: Optional[str] = Form(None)
+    text_input: Optional[str] = Form(None),
+    case_id: Optional[str] = Form(None)  # For demo sessions
 ):
     """
     Stream audio response chunks to client as they're generated.
@@ -413,7 +417,8 @@ async def interact_stream(
             print("🤖 Generating tutor response...")
             response_data = await reasoning_engine.generate_response(
                 session_id=session_uuid,
-                student_input=student_input_text
+                student_input=student_input_text,
+                case_id=case_id  # Pass case_id for demo sessions
             )
 
             tutor_response = response_data["tutor_response"]
