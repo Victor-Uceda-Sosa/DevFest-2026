@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import ConsultationInterface from '../components/elevenlabs/ConsultationInterface';
+import ConsultationInterface from '../components/elevenlabs/ConsultationInterface.jsx';
 
 const Consultations = () => {
   const { logout } = useAuth();

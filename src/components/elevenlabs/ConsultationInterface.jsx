@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import VoiceRecorder from './VoiceRecorder';
-import { toast } from 'react-toastify';
+import VoiceRecorder from './VoiceRecorder.jsx';
 
 const ConsultationInterface = () => {
   const { user } = useAuth();
@@ -20,7 +19,7 @@ const ConsultationInterface = () => {
         const response = await api.get('/api/consultations/cases');
         setCases(response.data);
       } catch (error) {
-        toast.error('Failed to load cases');
+        console.error('Failed to load cases');
         console.error(error);
       }
     };
@@ -29,7 +28,7 @@ const ConsultationInterface = () => {
 
   const handleStartConsultation = async () => {
     if (!selectedCase) {
-      toast.error('Please select a case');
+      console.warn('Please select a case');
       return;
     }
 
@@ -40,9 +39,9 @@ const ConsultationInterface = () => {
         case_title: selectedCase.case_title,
       });
       setConsultation(response.data);
-      toast.success('Consultation started!');
+      console.log('Consultation started!');
     } catch (error) {
-      toast.error('Failed to start consultation');
+      console.error('Failed to start consultation');
       console.error(error);
     } finally {
       setLoading(false);
@@ -51,7 +50,7 @@ const ConsultationInterface = () => {
 
   const handleRecordingComplete = async (audioBlob, duration) => {
     if (!consultation) {
-      toast.error('No active consultation');
+      console.warn('No active consultation');
       return;
     }
 
@@ -75,9 +74,9 @@ const ConsultationInterface = () => {
       console.log('Transcript:', transcriptText);
       setTranscript(transcriptText);
       setUploading(false);
-      toast.success('Audio uploaded and transcribed!');
+      console.log('Audio uploaded and transcribed!');
     } catch (error) {
-      toast.error('Failed to upload audio');
+      console.error('Failed to upload audio');
       console.error(error);
       setUploading(false);
     }
@@ -194,7 +193,7 @@ const ConsultationInterface = () => {
             <button
               onClick={() => {
                 // TODO: Generate feedback in next phase
-                toast.info('Feedback generation coming soon!');
+                console.log('Feedback generation coming soon!');
               }}
               className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
             >

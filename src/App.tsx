@@ -13,6 +13,7 @@ const Login = lazy(() => import('./pages/Login.jsx'));
 const Register = lazy(() => import('./pages/Register.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const Profile = lazy(() => import('./pages/Profile'));
+const Consultations = lazy(() => import('./pages/Consultations.jsx'));
 const ProtectedRoute = lazy(() => import('./components/ProtectedRoute.jsx'));
 
 export default function App() {
@@ -270,6 +271,7 @@ export default function App() {
               <Route path="/interview" element={<ProtectedRoute><MockInterview /></ProtectedRoute>} />
               <Route path="/mcat" element={<ProtectedRoute><MCATStudy /></ProtectedRoute>} />
               <Route path="/scheduling" element={<ProtectedRoute><Scheduling /></ProtectedRoute>} />
+              <Route path="/consultations" element={<ProtectedRoute><Consultations /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
               {/* Catch all */}
