@@ -58,15 +58,24 @@ async def start_consultation(
     consultation: ConsultationCreate, user=Depends(get_current_user)
 ):
     """Start a new consultation session"""
+    print(f"\n=== START CONSULTATION ENDPOINT CALLED ===")
     try:
-        print(f"DEBUG: Starting consultation for user {user.id}")
+        print(f"DEBUG: User authenticated: {user}")
+        print(f"DEBUG: User ID: {user.id if user else 'None'}")
         print(f"DEBUG: Case ID: {consultation.case_id}")
+        print(f"DEBUG: Case Title: {consultation.case_title}")
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not authenticated",
+            )
 
         # Create consultation record in database
         consultation_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
 
-        print(f"DEBUG: Attempting to insert into database")
+        print(f"DEBUG: Attempting to insert into database with user_id={user.id}")
         result = get_supabase().table("consultations").insert(
             {
                 "id": consultation_id,
@@ -80,6 +89,7 @@ async def start_consultation(
 
         print(f"DEBUG: Insert result: {result}")
         if result.data:
+            print(f"DEBUG: Consultation created successfully: {result.data[0]}")
             return result.data[0]
         else:
             raise HTTPException(

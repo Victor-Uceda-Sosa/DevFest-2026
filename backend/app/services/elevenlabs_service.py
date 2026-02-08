@@ -26,32 +26,54 @@ class ElevenLabsService:
             Dictionary with transcription result
         """
         try:
-            # Create transcriber with universal-3-pro model
-            transcriber = aai.Transcriber()
+            print(f"DEBUG: Starting transcription, audio size: {len(audio_data)} bytes")
 
-            # AssemblyAI expects file path or URL, so we'll upload the audio
-            # Convert bytes to file-like object
-            audio_file = io.BytesIO(audio_data)
+            # Save audio to temp file for transcription
+            import tempfile
+            import os
 
-            # Configure transcription with speech models (list)
-            config = aai.TranscriptionConfig(speech_models=["universal-2"])
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.webm') as tmp:
+                tmp.write(audio_data)
+                tmp_path = tmp.name
 
-            # Transcribe using AssemblyAI
-            transcript = transcriber.transcribe(audio_file, config=config)
+            try:
+                # Transcribe from file
+                print(f"DEBUG: Transcribing from file: {tmp_path}")
+                transcriber = aai.Transcriber()
+                config = aai.TranscriptionConfig(language_code="en")
 
-            if transcript.status == aai.TranscriptStatus.error:
+                transcript = transcriber.transcribe(tmp_path, config=config)
+
+                print(f"DEBUG: Transcription status: {transcript.status}")
+                if transcript.status == aai.TranscriptStatus.error:
+                    error_msg = transcript.error or "Unknown error"
+                    print(f"ERROR: Transcription failed: {error_msg}")
+                    return {
+                        "success": False,
+                        "error": error_msg,
+                    }
+
+                result_text = transcript.text or ""
+                print(f"DEBUG: Transcription successful: {result_text}")
+                print("\n" + "="*80)
+                print(f"TRANSCRIPTION RESULT:")
+                print(f"Text: {result_text}")
+                print("="*80 + "\n")
+
                 return {
-                    "success": False,
-                    "error": transcript.error,
+                    "transcript": result_text,
+                    "success": True,
+                    "duration_seconds": 0,
                 }
+            finally:
+                # Clean up temp file
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
 
-            return {
-                "transcript": transcript.text,
-                "success": True,
-                "duration_seconds": 0,
-            }
         except Exception as e:
-            print(f"Transcription error: {e}")
+            print(f"ERROR: Transcription error: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "error": str(e),
