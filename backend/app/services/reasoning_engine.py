@@ -1,6 +1,7 @@
 """
 Reasoning engine that orchestrates Socratic clinical reasoning sessions.
 """
+import logging
 from typing import Dict, Any, List, Optional
 from uuid import UUID
 from app.services.kimi_service import kimi_service
@@ -10,6 +11,8 @@ from app.utils.prompt_templates import (
     format_interaction_prompt,
     format_initial_greeting
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ReasoningEngine:
@@ -68,21 +71,64 @@ class ReasoningEngine:
     ) -> Dict[str, Any]:
         """
         Generate tutor response to student input using Socratic method.
-        
+
         Args:
             session_id: Session UUID
             student_input: Student's question or response
-            
+
         Returns:
             Dictionary containing:
             - tutor_response: The Socratic response text
             - reasoning_metadata: Metadata about the reasoning process
         """
-        # Load session and case context
+        # Check if this is a demo session (in-memory, no database)
+        is_demo = str(session_id) == "00000000-0000-0000-0000-000000000000"
+
+        if is_demo:
+            # For demo sessions, generate a generic Socratic response
+            logger.info("📌 Demo session detected - generating generic response")
+
+            try:
+                # Use Kimi to analyze and respond with generic context
+                result = await kimi_service.analyze_clinical_reasoning(
+                    student_input=student_input,
+                    case_context={
+                        "clinical_scenario": "Patient presenting with acute symptoms",
+                        "chief_complaint": "Patient-reported chief complaint",
+                        "differential_diagnoses": [],
+                        "red_flags": [],
+                    },
+                    conversation_history=[]
+                )
+
+                logger.info(f"Result type: {type(result)}, Result: {result}")
+
+                if not isinstance(result, dict):
+                    logger.error(f"Expected dict from kimi_service, got {type(result)}")
+                    # Fallback for demo
+                    return {
+                        "tutor_response": "I understand. Can you tell me more about your symptoms?",
+                        "reasoning_metadata": {}
+                    }
+
+                tutor_response = self._extract_patient_response(result.get("tutor_response", ""))
+                return {
+                    "tutor_response": tutor_response,
+                    "reasoning_metadata": result.get("reasoning_metadata", {})
+                }
+            except Exception as e:
+                logger.error(f"Error in demo session response generation: {str(e)}")
+                # Fallback for demo
+                return {
+                    "tutor_response": "I'm listening. Can you describe what's happening?",
+                    "reasoning_metadata": {}
+                }
+
+        # Load session and case context from database (real cases only)
         session = await supabase_service.get_session(session_id)
         if not session:
             raise Exception("Session not found")
-        
+
         case = await supabase_service.get_case(session.case_id)
         if not case:
             raise Exception("Case not found")

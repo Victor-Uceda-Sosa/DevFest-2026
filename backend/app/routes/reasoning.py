@@ -15,6 +15,11 @@ from app.utils.validators import validate_audio_file, validate_text_input
 router = APIRouter()
 
 
+def _is_demo_session(session_id: str) -> bool:
+    """Check if this is a demo session (dummy UUID for testing)."""
+    return session_id == "00000000-0000-0000-0000-000000000000"
+
+
 @router.post("/interact", response_model=InteractionResponse)
 async def interact(
     session_id: str = Form(...),
@@ -48,6 +53,8 @@ async def interact(
     try:
         # Validate session ID
         print("📋 Step 1: Validating session ID...")
+
+        # Parse session ID as UUID
         try:
             session_uuid = UUID(session_id)
             print(f"   ✓ Valid UUID: {session_uuid}")
@@ -57,26 +64,34 @@ async def interact(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid session ID format"
             )
-        
-        # Check if session exists
-        print("🔍 Step 2: Checking if session exists...")
-        session = await supabase_service.get_session(session_uuid)
-        if not session:
-            print(f"   ✗ Session not found: {session_uuid}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
-            )
-        print(f"   ✓ Session found: {session.case_id}")
-        
-        # Check session is active
-        print(f"📊 Step 3: Checking session status...")
-        if session.status != "active":
-            print(f"   ✗ Session is {session.status}, not active")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Session is {session.status}, not active"
-            )
+
+        # Check if this is a demo session (in-memory, no database)
+        is_demo = _is_demo_session(session_id)
+
+        if is_demo:
+            print(f"   ✓ Demo session detected - skipping database lookup")
+            session = None  # Demo sessions don't have a database record
+        else:
+            # Check if session exists in database
+            print("🔍 Step 2: Checking if session exists...")
+            session = await supabase_service.get_session(session_uuid)
+            if not session:
+                print(f"   ✗ Session not found: {session_uuid}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Session not found"
+                )
+            print(f"   ✓ Session found: {session.case_id}")
+
+            # Check session is active
+            print(f"📊 Step 3: Checking session status...")
+            if session.status != "active":
+                print(f"   ✗ Session is {session.status}, not active")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Session is {session.status}, not active"
+                )
+
         print(f"   ✓ Session is active")
         
         # Get student input (transcribe audio or use text)
@@ -243,21 +258,24 @@ async def interact(
             traceback.print_exc()
             response_audio_url = None
         
-        # Save interaction to database
+        # Save interaction to database (skip for demo sessions)
         print("💾 Step 10: Saving interaction to database...")
-        try:
-            await supabase_service.save_interaction(
-                session_id=session_uuid,
-                student_input=student_input_text,
-                tutor_response=tutor_response,
-                audio_url=audio_url,
-                response_audio_url=response_audio_url,
-                reasoning_metadata=reasoning_metadata
-            )
-            print(f"   ✓ Interaction saved")
-        except Exception as e:
-            print(f"   ⚠️  Warning: Failed to save interaction: {str(e)}")
-            # Continue even if save fails
+        if is_demo:
+            print(f"   ℹ️  Demo session - skipping database save")
+        else:
+            try:
+                await supabase_service.save_interaction(
+                    session_id=session_uuid,
+                    student_input=student_input_text,
+                    tutor_response=tutor_response,
+                    audio_url=audio_url,
+                    response_audio_url=response_audio_url,
+                    reasoning_metadata=reasoning_metadata
+                )
+                print(f"   ✓ Interaction saved")
+            except Exception as e:
+                print(f"   ⚠️  Warning: Failed to save interaction: {str(e)}")
+                # Continue even if save fails
         
         # Clean response for frontend display (remove XML tags like <think>)
         print("🧹 Step 11: Cleaning response for display...")
@@ -339,13 +357,19 @@ async def interact_stream(
             print(f"   ✗ Invalid session ID format: {session_id}")
             raise HTTPException(status_code=400, detail="Invalid session ID format")
 
-        # Check if session exists
-        session = await supabase_service.get_session(session_uuid)
-        if not session:
-            print(f"   ✗ Session not found: {session_uuid}")
-            raise HTTPException(status_code=404, detail="Session not found")
+        # Check if this is a demo session (in-memory, no database)
+        is_demo = _is_demo_session(session_id)
 
-        print(f"✓ Session found: {session.case_id}")
+        if is_demo:
+            print(f"✓ Demo session detected - skipping database lookup")
+        else:
+            # Check if session exists in database
+            session = await supabase_service.get_session(session_uuid)
+            if not session:
+                print(f"   ✗ Session not found: {session_uuid}")
+                raise HTTPException(status_code=404, detail="Session not found")
+
+            print(f"✓ Session found: {session.case_id}")
 
         # Get student input - READ FILE HERE, BEFORE STREAMING
         if audio_file:
@@ -428,18 +452,19 @@ async def interact_stream(
 
             print(f"   ✓ Streaming complete ({chunk_count} chunks)")
 
-            # Save interaction asynchronously (don't wait for it)
-            try:
-                await supabase_service.save_interaction(
-                    session_id=session_uuid,
-                    student_input=student_input_text,
-                    tutor_response=tutor_response,
-                    audio_url=None,  # Not uploading in streaming mode
-                    response_audio_url=None,
-                    reasoning_metadata=reasoning_metadata
-                )
-            except Exception as e:
-                print(f"   ⚠️  Failed to save interaction: {str(e)}")
+            # Save interaction asynchronously (don't wait for it, skip for demo sessions)
+            if not is_demo:
+                try:
+                    await supabase_service.save_interaction(
+                        session_id=session_uuid,
+                        student_input=student_input_text,
+                        tutor_response=tutor_response,
+                        audio_url=None,  # Not uploading in streaming mode
+                        response_audio_url=None,
+                        reasoning_metadata=reasoning_metadata
+                    )
+                except Exception as e:
+                    print(f"   ⚠️  Failed to save interaction: {str(e)}")
 
         except Exception as e:
             print(f"\n❌ ERROR in stream_response:")
