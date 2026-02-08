@@ -3,6 +3,7 @@ import { Home } from './components/Home';
 import { MockInterview } from './components/MockInterview';
 import { MCATStudy } from './components/MCATStudy';
 import { Scheduling } from './components/Scheduling';
+import { BillingGate } from './components/BillingGate';
 import { Activity, Home as HomeIcon, Stethoscope, BookOpen, Calendar } from 'lucide-react';
 
 type Page = 'home' | 'interview' | 'mcat' | 'scheduling';
@@ -15,7 +16,11 @@ export default function App() {
       case 'home':
         return <Home onNavigate={setCurrentPage} />;
       case 'interview':
-        return <MockInterview />;
+        return (
+          <BillingGate title="Mock Patient Interviews" description="Upgrade to practice with AI-generated interview simulations.">
+            <MockInterview />
+          </BillingGate>
+        );
       case 'mcat':
         return <MCATStudy />;
       case 'scheduling':

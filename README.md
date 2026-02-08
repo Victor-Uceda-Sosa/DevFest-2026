@@ -1,15 +1,35 @@
-# Getting Started with Create React App
+# MedStudent Pro
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Payments are powered by [Flowglad](https://flowglad.com). Paid features (Mock Interviews, Exam Prep, Study Scheduling) are gated until the user has access.
+
+## Payments (Flowglad)
+
+1. **Environment**: Ensure `.env` in the project root contains your Flowglad secret key:
+   ```bash
+   FLOWGLAD_SECRET_KEY="sk_test_..."
+   ```
+
+2. **Run the app**: You need both the Flowglad API server and the Vite dev server.
+   - Terminal 1: `npm run server` (runs the Flowglad proxy at http://localhost:3001)
+   - Terminal 2: `npm run dev` (runs the app at http://localhost:3000)
+
+3. **Flowglad dashboard**: In [Flowglad](https://app.flowglad.com), create a pricing model with:
+   - A **feature** with slug `pro` (used to gate paid content).
+   - A **price** with slug `pro_monthly` (or update `BillingGate` in `src/components/BillingGate.tsx` to use your price slug).
+
+Until you add real auth, the app uses a persistent guest ID in `localStorage` to represent the customer. Replace `getCustomerDetails` in `server/flowglad.js` with your user lookup when you add authentication.
 
 ## Available Scripts
 
 In the project directory, you can run:
 
-### `npm start`
+### `npm run dev`
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Runs the Vite dev server. Open [http://localhost:3000](http://localhost:3000). For billing to work, also run `npm run server` in another terminal.
+
+### `npm run server`
+
+Runs the Flowglad API server (port 3001). Required for the billing UI and checkout; the Vite dev server proxies `/api` to it.
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
