@@ -33,12 +33,12 @@ const Register = () => {
     try {
       // Register the account
       await register(email, password);
-      setSuccess('✓ Account created successfully! You can now login with your credentials.');
+      setSuccess('✓ Account created! Redirecting to login...');
 
-      // Redirect to login after 1.5 seconds
+      // Redirect to login
       setTimeout(() => {
         navigate('/login');
-      }, 1500);
+      }, 1000);
     } catch (err) {
       setError(err?.message || 'Registration failed');
       setLoading(false);

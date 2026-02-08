@@ -15,30 +15,23 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export const authService = {
   async register(email: string, password: string) {
-    console.log('Attempting registration with email:', email);
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
     });
-    if (error) {
-      console.error('Registration error:', error);
-      throw new Error(error.message || 'Registration failed');
-    }
-    console.log('Registration successful, user:', data.user ? 'created' : 'pending', 'requires_confirmation:', data.user?.confirmed_at ? 'no' : 'yes');
+    if (error) throw error;
     return data;
   },
 
   async login(email: string, password: string) {
-    console.log('Attempting login with email:', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    if (error) {
-      console.error('Login error:', error);
-      throw new Error(error.message || 'Login failed');
-    }
-    console.log('Login successful, session:', data.session ? 'exists' : 'missing');
+    if (error) throw error;
     return data;
   },
 
