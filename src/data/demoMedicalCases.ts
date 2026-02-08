@@ -19,24 +19,6 @@ export const demoCases: CasePublic[] = [
       'Assess troponin elevation',
       'Manage acute coronary syndrome',
     ],
-    medical_images: [
-      {
-        id: 'img-1-1',
-        type: 'xray',
-        url: 'https://images.pexels.com/photos/5214934/pexels-photo-5214934.jpeg?auto=compress&cs=tinysrgb&w=600',
-        title: 'Chest X-ray - Frontal View',
-        description: 'Baseline chest radiograph showing cardiac silhouette',
-        findings: 'Normal cardiac size, clear lung fields',
-      },
-      {
-        id: 'img-1-2',
-        type: 'photo',
-        url: 'https://images.pexels.com/photos/8376319/pexels-photo-8376319.jpeg?auto=compress&cs=tinysrgb&w=600',
-        title: '12-Lead EKG',
-        description: 'Electrocardiogram showing acute ST changes',
-        findings: 'ST elevation in leads II, III, aVF - Inferior MI',
-      },
-    ],
   },
   {
     id: 'case-2',
@@ -47,16 +29,6 @@ export const demoCases: CasePublic[] = [
       'Assess severity of infection',
       'Determine causative organism',
       'Guide antibiotic selection',
-    ],
-    medical_images: [
-      {
-        id: 'img-2-1',
-        type: 'xray',
-        url: 'https://images.pexels.com/photos/5632399/pexels-photo-5632399.jpeg?auto=compress&cs=tinysrgb&w=600',
-        title: 'Chest X-ray - Pneumonia',
-        description: 'Right upper lobe infiltrate consistent with pneumonia',
-        findings: 'Dense consolidation RUL, air bronchograms present',
-      },
     ],
   },
   {
@@ -69,16 +41,6 @@ export const demoCases: CasePublic[] = [
       'Evaluate for perforation',
       'Determine surgical urgency',
     ],
-    medical_images: [
-      {
-        id: 'img-3-1',
-        type: 'ultrasound',
-        url: 'https://images.pexels.com/photos/3825517/pexels-photo-3825517.jpeg?auto=compress&cs=tinysrgb&w=600',
-        title: 'Ultrasound - Abdomen',
-        description: 'Transabdominal ultrasound of RLQ',
-        findings: 'Dilated non-compressible appendix, 8mm diameter with appendicolith',
-      },
-    ],
   },
   {
     id: 'case-4',
@@ -90,16 +52,6 @@ export const demoCases: CasePublic[] = [
       'Assess for thrombolytic eligibility',
       'Guide acute management',
     ],
-    medical_images: [
-      {
-        id: 'img-4-1',
-        type: 'ct',
-        url: 'https://images.pexels.com/photos/3962283/pexels-photo-3962283.jpeg?auto=compress&cs=tinysrgb&w=600',
-        title: 'CT Head - Acute',
-        description: 'Non-contrast CT showing early ischemic changes',
-        findings: 'Hypodensity in left MCA distribution, no hemorrhage',
-      },
-    ],
   },
   {
     id: 'case-5',
@@ -110,16 +62,6 @@ export const demoCases: CasePublic[] = [
       'Assess severity via labs',
       'Calculate anion gap',
       'Guide insulin and fluid management',
-    ],
-    medical_images: [
-      {
-        id: 'img-5-1',
-        type: 'lab',
-        url: 'https://images.pexels.com/photos/5632399/pexels-photo-5632399.jpeg?auto=compress&cs=tinysrgb&w=600',
-        title: 'Lab Results',
-        description: 'Serum and capillary glucose',
-        findings: 'Blood glucose: 542 mg/dL (severe hyperglycemia)',
-      },
     ],
   },
 ];

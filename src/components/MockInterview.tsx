@@ -4,7 +4,6 @@ import { Button } from './ui/button';
 import { User, Bot, Play, RotateCcw, CheckCircle2, AlertCircle, Sparkles, Square, Loader2, Mic, Send } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { AudioRecorder, formatRecordingTime } from '../utils/audioRecorder';
-import { MedicalImages } from './MedicalImages';
 import interviewApi from '../services/interviewApi';
 import dedalusApi from '../services/dedalusApi';
 import { demoCases } from '../data/demoMedicalCases';
@@ -102,7 +101,6 @@ export function MockInterview() {
           differential_diagnoses: response.case.differential_diagnoses,
           red_flags: response.case.red_flags,
           learning_objectives: response.case.learning_objectives,
-          medical_images: response.case.medical_images,
         };
 
         setCases((prev) => [generatedCase, ...prev]);
@@ -601,14 +599,6 @@ export function MockInterview() {
           Change Case
         </Button>
       </div>
-
-      {/* Medical Images - Multimodal Integration with Dedalus */}
-      {selectedCase.medical_images && selectedCase.medical_images.length > 0 && (
-        <MedicalImages
-          images={selectedCase.medical_images}
-          title="Medical Imaging & Findings"
-        />
-      )}
 
       {error && (
         <Card className="p-4 bg-red-900/20 border border-red-500/30">
