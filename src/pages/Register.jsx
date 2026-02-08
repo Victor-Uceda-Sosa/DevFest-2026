@@ -11,7 +11,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const { register, login } = useAuth();
+  const { register, login, user } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,11 +38,12 @@ const Register = () => {
       // Automatically login
       await login(email, password);
 
-      // Redirect to dashboard
-      navigate('/dashboard');
+      // Wait a moment for auth state to update, then redirect
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
     } catch (err) {
       setError(err?.message || 'Registration failed');
-    } finally {
       setLoading(false);
     }
   };
