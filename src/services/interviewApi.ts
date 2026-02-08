@@ -104,8 +104,9 @@ export const sendAudioInteractionStream = async (
   formData.append('session_id', sessionId);
   formData.append('audio_file', audioBlob, 'recording.webm');
 
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const token = localStorage.getItem('access_token');
-  const response = await fetch('/api/reasoning/interact-stream', {
+  const response = await fetch(`${baseURL}/api/reasoning/interact-stream`, {
     method: 'POST',
     body: formData,
     headers: {
@@ -144,8 +145,9 @@ export const sendTextInteractionStream = async (
   formData.append('session_id', sessionId);
   formData.append('text_input', textInput);
 
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const token = localStorage.getItem('access_token');
-  const response = await fetch('/api/reasoning/interact-stream', {
+  const response = await fetch(`${baseURL}/api/reasoning/interact-stream`, {
     method: 'POST',
     body: formData,
     headers: {
