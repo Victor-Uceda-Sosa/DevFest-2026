@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import React, { useEffect, useState } from 'react';
 import './index.css';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function AppLoader() {
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +58,11 @@ function AppLoader() {
 
 const root = document.getElementById('root');
 if (root) {
-  createRoot(root).render(<AppLoader />);
+  createRoot(root).render(
+    <ThemeProvider>
+      <AppLoader />
+    </ThemeProvider>
+  );
 } else {
   document.body.innerHTML = '<h1 style="color:red">ERROR: root element not found</h1>';
 }

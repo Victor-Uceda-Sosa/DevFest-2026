@@ -10,80 +10,94 @@ export function Home({ onNavigate }: HomeProps) {
   const features = [
     {
       id: 'interview',
-      title: 'Mock Patient Interviews',
-      description: 'Practice your patient communication skills with AI-generated realistic interview simulations',
+      title: 'Patient Interviews',
+      description: 'Practice clinical reasoning with AI-powered patient simulations and voice interactions',
       icon: Stethoscope,
-      color: 'from-blue-500 to-blue-600',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-blue-700',
     },
     {
       id: 'mcat',
       title: 'Exam Preparation',
-      description: 'Study resources for MCAT, USMLE, COMLEX and other medical licensing examinations',
+      description: 'Study resources and practice questions for MCAT, USMLE, and COMLEX examinations',
       icon: BookOpen,
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      textColor: 'text-purple-700',
     },
     {
       id: 'scheduling',
       title: 'Study Scheduling',
-      description: 'Organize your study time, rotations, and important deadlines with AI recommendations',
+      description: 'Organize study time and track your progress with intelligent recommendations',
       icon: Calendar,
-      color: 'from-orange-500 to-orange-600',
-      bgColor: 'bg-orange-50',
-      textColor: 'text-orange-700',
     },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-[calc(100vh-8rem)] flex flex-col items-center justify-center space-y-12">
       {/* Hero Section */}
-      <div className="text-center space-y-4 py-8">
-        <h2 className="text-4xl font-bold text-gray-900">
-          Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500">MedStudent Pro</span>
-        </h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          AI-powered platform for clinical skills development, exam preparation, and academic success
+      <div className="text-center space-y-6 max-w-4xl px-4">
+        <h1 className="text-6xl font-bold leading-tight">
+          <span className="text-foreground">Welcome to </span>
+          <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-teal-400 bg-clip-text text-transparent">
+            K2 Think
+          </span>
+        </h1>
+        <p className="text-muted-foreground text-xl max-w-2xl mx-auto leading-relaxed">
+          AI-powered clinical reasoning tutor for medical students
+        </p>
+        <p className="text-muted-foreground/70 text-base max-w-xl mx-auto">
+          Upload a paper, let agents distill it into concepts, videos, and living notebooks
         </p>
       </div>
 
+      {/* Upload Section - inspired by ClarifAI */}
+      <div className="w-full max-w-3xl px-4">
+        <Card className="bg-card/50 border-border hover:border-muted-foreground/30 transition-all duration-300 backdrop-blur-sm">
+          <div 
+            className="p-12 text-center cursor-pointer group"
+            onClick={() => onNavigate('interview')}
+          >
+            <div className="flex flex-col items-center space-y-6">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Stethoscope className="w-10 h-10 text-blue-400" />
+              </div>
+              <div className="space-y-2">
+                <p className="text-foreground text-lg font-medium">
+                  Start your clinical interview
+                </p>
+                <p className="text-muted-foreground text-sm">
+                  Practice with AI patients and develop your diagnostic skills
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl px-4">
         {features.map((feature) => (
           <Card
             key={feature.id}
-            className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-gray-100 hover:border-blue-200 group"
+            className="bg-card/30 border-border hover:border-muted-foreground/30 hover:bg-card/50 transition-all duration-300 cursor-pointer group backdrop-blur-sm"
             onClick={() => onNavigate(feature.id as any)}
           >
-            <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${feature.color} flex-shrink-0`}>
-                <feature.icon className="w-6 h-6 text-white" />
+            <div className="p-6 space-y-4">
+              <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <feature.icon className="w-6 h-6 text-blue-400" />
               </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-foreground group-hover:text-blue-400 transition-colors">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600">{feature.description}</p>
-                <div className="flex items-center gap-2 text-blue-600 font-medium pt-2">
-                  <span>Get Started</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-blue-400 text-sm font-medium pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span>Explore</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </div>
             </div>
           </Card>
         ))}
       </div>
-
-      {/* Quick Tips */}
-      <Card className="p-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-100">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">💡 Quick Tip</h3>
-        <p className="text-gray-700">
-          Start your day with an AI-generated mock interview, then use the diagnosis analysis tool to reinforce your clinical reasoning. 
-          Schedule regular study sessions to maintain consistent progress across all your exams!
-        </p>
-      </Card>
     </div>
   );
 }

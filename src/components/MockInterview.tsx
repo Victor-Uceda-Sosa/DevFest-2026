@@ -6,6 +6,7 @@ import { Badge } from './ui/badge';
 import { AudioRecorder, formatRecordingTime } from '../utils/audioRecorder';
 import interviewApi from '../services/interviewApi';
 import { CasePublic, SessionStartResponse, SessionCompleteResponse } from '../types/api';
+import { VoiceVisualizer } from './VoiceVisualizer';
 
 interface Message {
   role: 'patient' | 'student';
@@ -281,30 +282,30 @@ export function MockInterview() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Mock Patient Interviews</h2>
-          <p className="text-gray-600">Select a clinical case to practice your patient interview skills</p>
+          <h2 className="text-3xl font-bold text-foreground mb-2">Mock Patient Interviews</h2>
+          <p className="text-muted-foreground">Select a clinical case to practice your patient interview skills</p>
         </div>
 
         {error && (
-          <Card className="p-4 bg-red-50 border-2 border-red-200">
+          <Card className="p-4 bg-destructive/10 border-destructive">
             <div className="flex gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
               <div>
-                <p className="text-sm text-red-900 font-medium">Error</p>
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-destructive font-medium">Error</p>
+                <p className="text-sm text-destructive/80">{error}</p>
               </div>
             </div>
           </Card>
         )}
 
-        <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200">
+        <Card className="p-6 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-primary/30">
           <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex-shrink-0">
+            <div className="p-3 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex-shrink-0">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Interview Platform</h3>
-              <p className="text-gray-700 mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-2">AI-Powered Interview Platform</h3>
+              <p className="text-muted-foreground mb-4">
                 Practice with AI patients powered by K2 clinical reasoning and ElevenLabs voice synthesis. 
                 Speak naturally and receive intelligent Socratic responses to guide your learning.
               </p>
@@ -313,25 +314,25 @@ export function MockInterview() {
         </Card>
 
         {loadingCases ? (
-          <Card className="p-12 text-center">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading clinical cases...</p>
+          <Card className="p-12 text-center bg-card/50 border-border">
+            <Loader2 className="w-10 h-10 text-primary animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading clinical cases...</p>
           </Card>
         ) : cases.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cases.map((caseData) => (
-              <Card key={caseData.id} className="p-6 hover:shadow-lg transition-shadow border-2 border-gray-100">
+              <Card key={caseData.id} className="p-6 hover:shadow-lg hover:shadow-primary/10 transition-all bg-card/50 border-border hover:border-primary/30">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{caseData.title}</h3>
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Chief Complaint:</span> {caseData.chief_complaint}
+                    <h3 className="text-xl font-semibold text-foreground mb-2">{caseData.title}</h3>
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Chief Complaint:</span> {caseData.chief_complaint}
                     </div>
                   </div>
                   
                   {caseData.learning_objectives && caseData.learning_objectives.length > 0 && (
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Learning Objectives:</span>
+                    <div className="text-sm text-muted-foreground">
+                      <span className="font-medium text-foreground">Learning Objectives:</span>
                       <ul className="mt-1 space-y-1">
                         {caseData.learning_objectives.slice(0, 2).map((obj, idx) => (
                           <li key={idx} className="text-xs">• {obj}</li>
@@ -343,7 +344,7 @@ export function MockInterview() {
                   <Button
                     onClick={() => startInterview(caseData)}
                     disabled={isProcessing}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white"
                   >
                     <Play className="w-4 h-4 mr-2" />
                     Start Interview
@@ -353,9 +354,9 @@ export function MockInterview() {
             ))}
           </div>
         ) : (
-          <Card className="p-12 text-center">
-            <p className="text-gray-500 mb-4">No clinical cases available.</p>
-            <Button onClick={loadCases} variant="outline">
+          <Card className="p-12 text-center bg-card/50 border-border">
+            <p className="text-muted-foreground mb-4">No clinical cases available.</p>
+            <Button onClick={loadCases} variant="outline" className="border-border text-muted-foreground hover:bg-muted">
               <RotateCcw className="w-4 h-4 mr-2" />
               Retry
             </Button>
@@ -367,144 +368,162 @@ export function MockInterview() {
 
   // Interview view
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-[calc(100vh-8rem)] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">{selectedCase.title}</h2>
-          <p className="text-gray-600">Chief Complaint: {selectedCase.chief_complaint}</p>
+          <h2 className="text-3xl font-bold text-foreground">{selectedCase.title}</h2>
+          <p className="text-muted-foreground">Chief Complaint: {selectedCase.chief_complaint}</p>
         </div>
-        <Button onClick={resetInterview} variant="outline" disabled={isProcessing}>
+        <Button onClick={resetInterview} variant="outline" disabled={isProcessing} className="border-border text-muted-foreground hover:bg-muted">
           <RotateCcw className="w-4 h-4 mr-2" />
           Change Case
         </Button>
       </div>
 
       {error && (
-        <Card className="p-4 bg-red-50 border-2 border-red-200">
+        <Card className="p-4 bg-destructive/10 border-destructive mb-6">
           <div className="flex gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
             <div>
-              <p className="text-sm text-red-900 font-medium">Error</p>
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm text-destructive font-medium">Error</p>
+              <p className="text-sm text-destructive/80">{error}</p>
             </div>
           </div>
         </Card>
       )}
 
-      <Card className="p-6">
-        <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
-          {messages.map((message, index) => (
-            <div key={index} className={`flex gap-3 ${message.role === 'student' ? 'justify-end' : ''}`}>
-              {message.role === 'patient' && (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-white" />
+      {/* Messages and Voice Visualizer Container */}
+      <div className="flex-1 flex flex-col">
+        {/* Messages Area */}
+        <Card className="flex-1 p-6 bg-card/50 border-border mb-6 overflow-hidden">
+          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+            {messages.map((message, index) => (
+              <div key={index} className={`flex gap-3 ${message.role === 'student' ? 'justify-end' : ''}`}>
+                {message.role === 'patient' && (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                )}
+                <div
+                  className={`max-w-[70%] p-4 rounded-lg ${
+                    message.role === 'patient'
+                      ? 'bg-muted text-foreground'
+                      : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white'
+                  }`}
+                >
+                  <p>{message.content}</p>
+                  {message.audioUrl && (
+                    <button
+                      onClick={() => playAudioResponse(message.audioUrl!)}
+                      className="mt-2 text-xs underline hover:no-underline text-blue-300"
+                    >
+                      🔊 Play audio
+                    </button>
+                  )}
                 </div>
-              )}
-              <div
-                className={`max-w-[70%] p-4 rounded-lg ${
-                  message.role === 'patient'
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
-                }`}
-              >
-                <p>{message.content}</p>
-                {message.audioUrl && (
-                  <button
-                    onClick={() => playAudioResponse(message.audioUrl!)}
-                    className="mt-2 text-xs underline hover:no-underline"
-                  >
-                    🔊 Play audio
-                  </button>
+                {message.role === 'student' && (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
                 )}
               </div>
-              {message.role === 'student' && (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5 text-white" />
-                </div>
-              )}
-            </div>
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        </Card>
 
         {!isComplete && (
-          <div className="space-y-3">
-            {/* Voice Recording Section */}
-            <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-              {!isRecording && !audioBlob && (
-                <div className="text-center">
-                  <p className="text-gray-700 mb-4">
-                    Click the microphone to record your question or response
-                  </p>
-                  <Button
-                    onClick={startRecording}
-                    disabled={isProcessing}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Mic className="w-5 h-5 mr-2" />
-                    Start Recording
-                  </Button>
-                </div>
-              )}
-
-              {isRecording && (
-                <div className="text-center">
-                  <div className="mb-4">
-                    <div className="text-3xl font-bold text-red-600 mb-2 animate-pulse">
-                      🔴 {formatRecordingTime(recordingTime)}
-                    </div>
-                    <p className="text-gray-700">Recording...</p>
-                  </div>
-                  <Button
-                    onClick={stopRecording}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Stop Recording
-                  </Button>
-                </div>
-              )}
-
-              {audioBlob && !isRecording && (
-                <div className="text-center">
-                  <p className="text-gray-700 mb-4">
-                    ✓ Recording ready ({formatRecordingTime(recordingTime)})
-                  </p>
-                  <div className="flex gap-2 justify-center">
+          <div className="space-y-6">
+            {/* Voice Visualizer Section */}
+            <div className="flex flex-col items-center justify-center py-8">
+              <VoiceVisualizer 
+                isRecording={isRecording}
+                isProcessing={isProcessing}
+                isSpeaking={currentAudio !== null}
+                size={200}
+              />
+              
+              {/* Recording Controls */}
+              <div className="mt-8 space-y-4 text-center">
+                {!isRecording && !audioBlob && (
+                  <div>
+                    <p className="text-muted-foreground mb-4">
+                      Click to record your question or response
+                    </p>
                     <Button
                       onClick={startRecording}
-                      variant="outline"
                       disabled={isProcessing}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-full"
                     >
-                      Re-record
-                    </Button>
-                    <Button
-                      onClick={sendAudio}
-                      disabled={isProcessing}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          Send Response
-                        </>
-                      )}
+                      <Mic className="w-6 h-6 mr-2" />
+                      Start Recording
                     </Button>
                   </div>
-                </div>
-              )}
+                )}
+
+                {isRecording && (
+                  <div>
+                    <div className="mb-4">
+                      <div className="text-3xl font-bold text-red-500 mb-2">
+                        {formatRecordingTime(recordingTime)}
+                      </div>
+                      <p className="text-muted-foreground">Recording...</p>
+                    </div>
+                    <Button
+                      onClick={stopRecording}
+                      className="bg-red-600 hover:bg-red-700 text-white px-8 py-6 text-lg rounded-full"
+                    >
+                      <Square className="w-6 h-6 mr-2" />
+                      Stop Recording
+                    </Button>
+                  </div>
+                )}
+
+                {audioBlob && !isRecording && (
+                  <div>
+                    <p className="text-muted-foreground mb-4">
+                      ✓ Recording ready ({formatRecordingTime(recordingTime)})
+                    </p>
+                    <div className="flex gap-3 justify-center">
+                      <Button
+                        onClick={startRecording}
+                        variant="outline"
+                        disabled={isProcessing}
+                        className="border-border text-muted-foreground hover:bg-muted px-6 py-6 rounded-full"
+                      >
+                        Re-record
+                      </Button>
+                      <Button
+                        onClick={sendAudio}
+                        disabled={isProcessing}
+                        className="bg-green-600 hover:bg-green-700 text-white px-8 py-6 text-lg rounded-full"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-5 h-5 mr-2" />
+                            Send Response
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center justify-between">
+            {/* End Interview Button */}
+            <div className="flex justify-center">
               <Button
                 onClick={endInterview}
                 variant="outline"
                 disabled={isProcessing}
-                className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+                className="border-destructive/50 text-destructive hover:bg-destructive/10"
               >
                 <Square className="w-4 h-4 mr-2" />
                 End Interview
@@ -512,13 +531,13 @@ export function MockInterview() {
             </div>
           </div>
         )}
-      </Card>
+      </div>
 
       {!isComplete && (
-        <Card className="p-4 bg-blue-50 border-2 border-blue-100">
+        <Card className="p-4 bg-primary/5 border-primary/30 mt-6">
           <div className="flex gap-2">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-            <p className="text-sm text-blue-900">
+            <AlertCircle className="w-5 h-5 text-primary flex-shrink-0" />
+            <p className="text-sm text-foreground">
               <span className="font-semibold">Tip:</span> Use open-ended questions to gather comprehensive information.
               Remember OPQRST: Onset, Provocation, Quality, Radiation, Severity, Time.
             </p>
@@ -527,57 +546,57 @@ export function MockInterview() {
       )}
 
       {isComplete && (
-        <Card className="p-8">
+        <Card className="p-8 bg-card/50 border-border">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Interview Complete</h3>
-            <p className="text-gray-600">
+            <h3 className="text-2xl font-bold text-foreground mb-2">Interview Complete</h3>
+            <p className="text-muted-foreground">
               {selectedCase.title} — {messages.filter(m => m.role === 'student').length} questions asked
             </p>
           </div>
 
           {feedbackLoading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-              <p className="text-gray-600 font-medium">Analyzing your interview with K2 AI...</p>
-              <p className="text-sm text-gray-400 mt-1">Reviewing your clinical technique and reasoning</p>
+              <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+              <p className="text-foreground font-medium">Analyzing your interview with K2 AI...</p>
+              <p className="text-sm text-muted-foreground mt-1">Reviewing your clinical technique and reasoning</p>
             </div>
           )}
 
           {!feedbackLoading && feedback && (
             <div className="space-y-4">
-              <div className="p-4 bg-white rounded-lg border-2 border-blue-100">
-                <h4 className="font-semibold text-gray-900 mb-2">Overall Assessment</h4>
-                <p className="text-gray-700">{feedback.evaluation.overall_assessment}</p>
+              <div className="p-4 bg-muted/50 rounded-lg border border-primary/30">
+                <h4 className="font-semibold text-foreground mb-2">Overall Assessment</h4>
+                <p className="text-foreground/90">{feedback.evaluation.overall_assessment}</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-white rounded-lg border-2 border-green-100">
-                  <h4 className="font-semibold text-green-700 mb-2 flex items-center gap-2">
+                <div className="p-4 bg-muted/50 rounded-lg border border-green-500/30">
+                  <h4 className="font-semibold text-green-600 dark:text-green-400 mb-2 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
                     Strengths
                   </h4>
                   <ul className="space-y-2">
                     {feedback.evaluation.strengths.map((strength, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                        <span className="text-green-600 mt-1">•</span>
+                      <li key={idx} className="text-sm text-foreground/90 flex items-start gap-2">
+                        <span className="text-green-600 dark:text-green-500 mt-1">•</span>
                         <span>{strength}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div className="p-4 bg-white rounded-lg border-2 border-orange-100">
-                  <h4 className="font-semibold text-orange-700 mb-2 flex items-center gap-2">
+                <div className="p-4 bg-muted/50 rounded-lg border border-orange-500/30">
+                  <h4 className="font-semibold text-orange-600 dark:text-orange-400 mb-2 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
                     Areas for Improvement
                   </h4>
                   <ul className="space-y-2">
                     {feedback.evaluation.areas_for_improvement.map((improvement, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                        <span className="text-orange-600 mt-1">•</span>
+                      <li key={idx} className="text-sm text-foreground/90 flex items-start gap-2">
+                        <span className="text-orange-600 dark:text-orange-500 mt-1">•</span>
                         <span>{improvement}</span>
                       </li>
                     ))}
@@ -586,30 +605,30 @@ export function MockInterview() {
               </div>
 
               {feedback.evaluation.key_findings.length > 0 && (
-                <div className="p-4 bg-white rounded-lg border-2 border-purple-100">
-                  <h4 className="font-semibold text-purple-700 mb-2">Key Findings</h4>
+                <div className="p-4 bg-muted/50 rounded-lg border border-purple-500/30">
+                  <h4 className="font-semibold text-purple-600 dark:text-purple-400 mb-2">Key Findings</h4>
                   <ul className="space-y-1">
                     {feedback.evaluation.key_findings.map((finding, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {finding}</li>
+                      <li key={idx} className="text-sm text-foreground/90">• {finding}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
               {feedback.evaluation.missed_red_flags.length > 0 && (
-                <div className="p-4 bg-white rounded-lg border-2 border-red-100">
-                  <h4 className="font-semibold text-red-700 mb-2">Missed Red Flags</h4>
+                <div className="p-4 bg-muted/50 rounded-lg border border-red-500/30">
+                  <h4 className="font-semibold text-red-600 dark:text-red-400 mb-2">Missed Red Flags</h4>
                   <ul className="space-y-1">
                     {feedback.evaluation.missed_red_flags.map((flag, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {flag}</li>
+                      <li key={idx} className="text-sm text-foreground/90">• {flag}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-2">Session Summary</h4>
-                <div className="text-sm text-gray-700 space-y-1">
+              <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                <h4 className="font-semibold text-foreground mb-2">Session Summary</h4>
+                <div className="text-sm text-foreground/90 space-y-1">
                   <p>• Total interactions: {feedback.summary.total_interactions}</p>
                   <p>• Duration: {feedback.summary.duration_minutes.toFixed(1)} minutes</p>
                   <p>• Questions asked: {feedback.summary.questions_asked}</p>
@@ -619,7 +638,7 @@ export function MockInterview() {
           )}
 
           <div className="flex gap-3 mt-8 justify-center">
-            <Button onClick={resetInterview} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+            <Button onClick={resetInterview} className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white">
               <RotateCcw className="w-4 h-4 mr-2" />
               Try Another Case
             </Button>

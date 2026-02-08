@@ -1,4 +1,7 @@
 import React, { useState, lazy, Suspense } from 'react';
+import { Sun, Moon } from 'lucide-react';
+import { Switch } from './components/ui/switch';
+import { useTheme } from './contexts/ThemeContext';
 
 // Lazy load components to catch import errors
 const Home = lazy(() => import('./components/Home').then(m => ({ default: m.Home })));
@@ -10,6 +13,7 @@ type Page = 'home' | 'interview' | 'mcat' | 'scheduling';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
+  const { theme, toggleTheme } = useTheme();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -43,46 +47,57 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, rgb(240, 249, 255), rgb(240, 253, 250))' }}>
+    <div className="min-h-screen bg-background transition-colors duration-200">
       {/* Header */}
-      <header style={{ background: 'white', borderBottom: '1px solid rgb(191, 219, 254)' }}>
-        <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ background: 'linear-gradient(135deg, rgb(37, 99, 235), rgb(34, 197, 94))', padding: '0.5rem', borderRadius: '0.5rem', width: '1.5rem', height: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>
-                📚
+      <header className="bg-card border-b border-border">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo - Clickable */}
+            <button 
+              onClick={() => setCurrentPage('home')}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary rounded-lg p-1"
+            >
+              <div className="bg-gradient-to-br from-blue-600 to-cyan-600 p-2 rounded-lg w-8 h-8 flex items-center justify-center text-lg">
+                🧠
               </div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'rgb(17, 24, 39)' }}>MedStudent Pro</h1>
-            </div>
+              <h1 className="text-xl font-semibold text-foreground tracking-tight">K2 Think</h1>
+            </button>
 
-            <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-              {(['home', 'interview', 'mcat', 'scheduling'] as const).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '0.5rem',
-                    border: 'none',
-                    background: currentPage === page ? 'rgb(219, 234, 254)' : 'transparent',
-                    color: currentPage === page ? 'rgb(29, 78, 216)' : 'rgb(75, 85, 99)',
-                    cursor: 'pointer',
-                    fontWeight: currentPage === page ? '500' : '400',
-                  }}
-                >
-                  <span>{page === 'interview' ? 'Interview' : page === 'mcat' ? 'Exams' : page === 'scheduling' ? 'Schedule' : 'Home'}</span>
-                </button>
-              ))}
-            </nav>
+            {/* Navigation and Theme Toggle */}
+            <div className="flex items-center gap-4">
+              <nav className="flex items-center gap-1">
+                {(['home', 'interview', 'mcat', 'scheduling'] as const).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-4 py-2 rounded-lg transition-all ${
+                      currentPage === page
+                        ? 'bg-primary/10 text-primary font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {page === 'interview' ? 'Interview' : page === 'mcat' ? 'Exams' : page === 'scheduling' ? 'Schedule' : 'Home'}
+                  </button>
+                ))}
+              </nav>
+
+              {/* Theme Toggle */}
+              <div className="flex items-center gap-2 pl-4 border-l border-border">
+                <Sun className="w-4 h-4 text-muted-foreground" />
+                <Switch 
+                  checked={theme === 'dark'} 
+                  onCheckedChange={toggleTheme}
+                  aria-label="Toggle theme"
+                />
+                <Moon className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main style={{ maxWidth: '80rem', margin: '0 auto', padding: '2rem 1rem' }}>
+      <main className="max-w-7xl mx-auto px-4 py-8">
         <ErrorBoundary>
           {renderPage()}
         </ErrorBoundary>
@@ -109,9 +124,9 @@ class ErrorBoundary extends React.Component<any, any> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '2rem', background: 'white', borderRadius: '0.5rem', border: '2px solid rgb(239, 68, 68)' }}>
-          <h3 style={{ fontSize: '1.25rem', color: 'rgb(239, 68, 68)', marginBottom: '1rem' }}>Error Loading Component</h3>
-          <pre style={{ color: 'rgb(107, 114, 128)', fontSize: '0.875rem', overflow: 'auto' }}>{String(this.state.error)}</pre>
+        <div className="p-8 bg-destructive/10 border-2 border-destructive rounded-lg">
+          <h3 className="text-xl text-destructive mb-4">Error Loading Component</h3>
+          <pre className="text-muted-foreground text-sm overflow-auto">{String(this.state.error)}</pre>
         </div>
       );
     }
