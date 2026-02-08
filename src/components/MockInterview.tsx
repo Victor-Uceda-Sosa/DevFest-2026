@@ -113,7 +113,15 @@ export function MockInterview() {
 
   // Send audio to backend
   const sendAudio = async () => {
-    if (!audioBlob || !sessionId) return;
+    if (!audioBlob) {
+      alert('❌ No audio recording. Please record something first.');
+      return;
+    }
+
+    if (!sessionId) {
+      alert('❌ No session ID. Please start an interview first.');
+      return;
+    }
 
     try {
       console.log('\n🚀 ============ SENDING AUDIO TO BACKEND (STREAMING) ============');
@@ -126,13 +134,7 @@ export function MockInterview() {
       setIsProcessing(true);
       setError(null);
 
-      // Initialize streaming audio context
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const audioBuffer = new Uint8Array();
-      let studentInputText = '';
-      let tutorResponseText = '';
       const startTime = Date.now();
-
       console.log('📤 Streaming POST request to /api/reasoning/interact-stream...');
 
       // Stream audio chunks and play them as they arrive
@@ -154,12 +156,14 @@ export function MockInterview() {
       setRecordingTime(0);
       console.log('============ AUDIO SEND COMPLETE ============\n');
     } catch (err: any) {
+      const errorMsg = err.message || 'Failed to process audio. Please try again.';
       console.error('\n❌ ============ AUDIO SEND FAILED ============');
       console.error('Error type:', err.constructor.name);
       console.error('Error message:', err.message);
       console.error('Error details:', err);
       console.error('============================================\n');
-      setError(err.message || 'Failed to process audio. Please try again.');
+      setError(errorMsg);
+      alert(`❌ Error: ${errorMsg}`);
     } finally {
       setIsProcessing(false);
     }
