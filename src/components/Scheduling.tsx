@@ -26,40 +26,7 @@ const eventTypeConfig = {
 };
 
 export function Scheduling() {
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: 1,
-      title: 'MCAT Practice Test',
-      date: '2026-02-15',
-      time: '09:00',
-      type: 'exam',
-      description: 'Full-length MCAT practice exam',
-    },
-    {
-      id: 2,
-      title: 'Surgery Rotation',
-      date: '2026-02-10',
-      time: '07:00',
-      type: 'rotation',
-      description: 'Week 3 of general surgery rotation',
-    },
-    {
-      id: 3,
-      title: 'Biochemistry Study Session',
-      date: '2026-02-08',
-      time: '14:00',
-      type: 'study',
-      description: 'Review metabolic pathways',
-    },
-    {
-      id: 4,
-      title: 'Anatomy Lab',
-      date: '2026-02-12',
-      time: '13:00',
-      type: 'other',
-      description: 'Dissection lab - cardiovascular system',
-    },
-  ]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
@@ -70,11 +37,46 @@ export function Scheduling() {
     type: 'study' as Event['type'],
     description: '',
   });
+  const [autoScheduleStudy, setAutoScheduleStudy] = useState(false);
 
   const [selectedWeek, setSelectedWeek] = useState(0);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const createRecommendedStudyEvents = (examDateStr: string, examTitle: string): Event[] => {
+    const examDate = new Date(`${examDateStr}T00:00:00`);
+    const todayStart = new Date(new Date().toDateString());
+    if (Number.isNaN(examDate.getTime()) || examDate <= todayStart) return [];
+
+    const intervals = [1, 3, 7, 14];
+    const description = 'Pomodoro: 25-minute focus + 5-minute break. Repeat for 2 rounds.';
+
+    return intervals
+      .map((daysBefore, index) => {
+        const sessionDate = new Date(examDate);
+        sessionDate.setDate(examDate.getDate() - daysBefore);
+        if (sessionDate <= todayStart) return null;
+
+        const dateStr = sessionDate.toISOString().split('T')[0];
+        const label =
+          daysBefore >= 7
+            ? `Review (${daysBefore / 7} week${daysBefore === 7 ? '' : 's'} before)`
+            : `Review (${daysBefore} day${daysBefore === 1 ? '' : 's'} before)`;
+        const peakTime = index % 2 === 0 ? 'Morning' : 'Early Afternoon';
+        const sessionTime = index % 2 === 0 ? '09:00' : '13:00';
+
+        return {
+          id: Date.now() + index + 1,
+          title: `${examTitle} ${label}`,
+          date: dateStr,
+          time: sessionTime,
+          type: 'study' as const,
+          description: `${peakTime} intensive session. ${description}`,
+        };
+      })
+      .filter((event): event is Event => Boolean(event));
   };
 
   const handleSaveEvent = () => {
@@ -91,7 +93,11 @@ export function Scheduling() {
         ...formData,
         id: Date.now(),
       };
-      setEvents((prev) => [...prev, newEvent]);
+      const recommendedStudyEvents =
+        formData.type === 'exam' && autoScheduleStudy
+          ? createRecommendedStudyEvents(formData.date, formData.title)
+          : [];
+      setEvents((prev) => [...prev, newEvent, ...recommendedStudyEvents]);
     }
 
     setIsDialogOpen(false);
@@ -103,6 +109,7 @@ export function Scheduling() {
       type: 'study',
       description: '',
     });
+    setAutoScheduleStudy(false);
   };
 
   const handleEditEvent = (event: Event) => {
@@ -130,11 +137,12 @@ export function Scheduling() {
       type: 'study',
       description: '',
     });
+    setAutoScheduleStudy(false);
     setIsDialogOpen(true);
   };
 
   // Generate week view
-  const today = new Date('2026-02-07'); // Using a fixed date for demo
+  const today = new Date();
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - today.getDay() + selectedWeek * 7);
 
@@ -159,6 +167,12 @@ export function Scheduling() {
     const eventDate = new Date(`${event.date} ${event.time}`);
     return eventDate >= today;
   }).slice(0, 5);
+
+  const isFutureExam =
+    formData.type === 'exam' &&
+    Boolean(formData.date) &&
+    new Date(`${formData.date}T00:00:00`) > new Date(today.toDateString());
+
 
   return (
     <div className="space-y-6">
@@ -225,6 +239,26 @@ export function Scheduling() {
                   </SelectContent>
                 </Select>
               </div>
+              {isFutureExam && !editingEvent && (
+                <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                  <Input
+                    id="auto-study"
+                    type="checkbox"
+                    className="mt-1 h-4 w-4"
+                    checked={autoScheduleStudy}
+                    onChange={(e) => setAutoScheduleStudy(e.target.checked)}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="auto-study" className="text-sm font-medium text-orange-900">
+                      Auto-add study sessions
+                    </Label>
+                    <p className="text-xs text-orange-800">
+                      Adds spaced-repetition reviews at 1 day, 3 days, 1 week, and 2 weeks before the exam.
+                      Sessions are scheduled in the morning or early afternoon and use Pomodoro blocks.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div>
                 <Label htmlFor="description">Description</Label>
                 <Textarea
@@ -305,7 +339,7 @@ export function Scheduling() {
                   variant="outline"
                   size="sm"
                 >
-                  ← Previous
+                  Previous
                 </Button>
                 <Button
                   onClick={() => setSelectedWeek(0)}
@@ -319,7 +353,7 @@ export function Scheduling() {
                   variant="outline"
                   size="sm"
                 >
-                  Next →
+                  Next
                 </Button>
               </div>
             </div>
