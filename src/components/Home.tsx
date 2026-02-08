@@ -52,41 +52,45 @@ export function Home({ onNavigate }: HomeProps) {
         </p>
       </div>
 
+      {/* Featured Interview Section */}
+      <Card className="p-12 border-2 border-cyan-500/30 bg-gradient-to-b from-slate-900 to-slate-950 hover:shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 cursor-pointer" onClick={() => onNavigate('interview')}>
+        <div className="flex flex-col items-center justify-center space-y-6">
+          <div className="p-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+            <Stethoscope className="w-12 h-12 text-white" />
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="text-2xl font-bold text-white">
+              Start your clinical interview
+            </h3>
+            <p className="text-gray-400">
+              Practice with AI patients and develop your diagnostic skills
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         {features.map((feature) => (
           <Card
             key={feature.id}
-            className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-gray-100 hover:border-blue-200 group"
+            className="p-6 hover:shadow-xl hover:shadow-cyan-500/20 transition-all duration-300 cursor-pointer border-2 border-slate-700 bg-slate-900/50 hover:border-cyan-500/50 group"
             onClick={() => onNavigate(feature.id as any)}
           >
-            <div className="flex items-start gap-4">
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${feature.color} flex-shrink-0`}>
+            <div className="flex flex-col items-center justify-center text-center space-y-4">
+              <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex-shrink-0">
                 <feature.icon className="w-6 h-6 text-white" />
               </div>
               <div className="flex-1 space-y-2">
-                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                <h3 className="text-lg font-bold text-white">
                   {feature.title}
                 </h3>
-                <p className="text-gray-600">{feature.description}</p>
-                <div className="flex items-center gap-2 text-blue-600 font-medium pt-2">
-                  <span>Get Started</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </div>
+                <p className="text-gray-400 text-sm">{feature.description}</p>
               </div>
             </div>
           </Card>
         ))}
       </div>
-
-      {/* Quick Tips */}
-      <Card className="p-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-100">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">💡 Quick Tip</h3>
-        <p className="text-gray-700">
-          Start your day with an AI-generated mock interview, then use the diagnosis analysis tool to reinforce your clinical reasoning. 
-          Schedule regular study sessions to maintain consistent progress across all your exams!
-        </p>
-      </Card>
     </div>
   );
 }
