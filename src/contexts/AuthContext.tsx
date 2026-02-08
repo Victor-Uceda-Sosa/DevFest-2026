@@ -35,14 +35,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize auth state
   useEffect(() => {
+    let isMounted = true;
+
     const initAuth = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser as User);
+        // First, try to get the current session (from localStorage)
+        const session = await authService.getCurrentSession();
+        if (session) {
+          // Session exists, get the user data
+          const currentUser = await authService.getCurrentUser();
+          if (isMounted) {
+            setUser(currentUser as User);
+          }
+        } else {
+          // No session found
+          if (isMounted) {
+            setUser(null);
+          }
+        }
       } catch (error) {
-        setUser(null);
+        console.error('Error during auth initialization:', error);
+        if (isMounted) {
+          setUser(null);
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -50,10 +69,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Listen for auth changes
     const subscription = authService.onAuthStateChange((currentUser) => {
-      setUser(currentUser as User);
+      if (isMounted) {
+        setUser(currentUser as User);
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription?.unsubscribe();
     };
   }, []);
@@ -62,8 +84,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await authService.login(email, password);
+      // Wait a moment for the session to be established
+      await new Promise(resolve => setTimeout(resolve, 100));
       const currentUser = await authService.getCurrentUser();
-      setUser(currentUser as User);
+      if (currentUser) {
+        setUser(currentUser as User);
+      } else {
+        throw new Error('Failed to get user after login');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       setLoading(false);
     }

@@ -52,9 +52,17 @@ export const authService = {
   },
 
   async getCurrentUser() {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    return data.user;
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        console.error('Error getting user:', error);
+        return null;
+      }
+      return data.user;
+    } catch (error) {
+      console.error('Exception getting user:', error);
+      return null;
+    }
   },
 
   onAuthStateChange(callback: (user: any) => void) {
