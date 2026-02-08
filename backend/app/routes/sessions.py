@@ -70,9 +70,38 @@ async def start_session(session_data: SessionCreate):
 
         # Generate initial greeting
         if is_demo_case:
-            # For demo cases, use a generic greeting since we don't have case data
-            initial_greeting = "Hi, thanks for seeing me. I'm not sure what's going on and would appreciate your help figuring this out."
-            print(f"📌 Using generic greeting for demo case")
+            # For demo cases, generate symptom-specific greeting from demo case data
+            from app.data.demo_cases import get_demo_case
+            demo_case_data = get_demo_case(session_data.case_id)
+
+            if demo_case_data:
+                # Generate greeting based on chief_complaint
+                chief_complaint = demo_case_data.get("chief_complaint", "")
+                import re
+                # Extract just the symptoms from chief complaint
+                symptoms = chief_complaint.lower()
+                # Remove age/demographic info
+                symptoms = re.sub(r'^.*?(?:presents with|complains of|reports|with)\s+', '', symptoms)
+                symptoms = re.sub(r'\s+(?:for|over|during)\s+\d+.*?(?=\.|$)', '', symptoms)
+                symptoms = symptoms.rstrip('.')
+
+                # Use conversational greeting templates
+                greeting_templates = [
+                    f"Hi, thanks for seeing me. So I've been having {symptoms} and I'm not sure what's going on.",
+                    f"Yeah, so I've been dealing with {symptoms}. It started a few days ago and it's been getting worse.",
+                    f"Um, I'm not really sure what's happening, but I have {symptoms}. I'm kind of worried about it.",
+                    f"Hey doc, thanks for taking me. So basically I have {symptoms} and I don't know if it's serious or what.",
+                    f"So I came in today because I've been experiencing {symptoms}. Can you help me figure out what this is?"
+                ]
+
+                # Select template based on case_id for consistency
+                template_index = hash(session_data.case_id) % len(greeting_templates)
+                initial_greeting = greeting_templates[template_index]
+                print(f"📌 Generated symptom-specific greeting for demo case: {session_data.case_id}")
+            else:
+                # Fallback if case not found
+                initial_greeting = "Hi, thanks for seeing me. I'm not sure what's going on and would appreciate your help figuring this out."
+                print(f"⚠️  Demo case not found, using generic greeting")
         else:
             # For real cases, generate context-aware greeting
             initial_greeting = await reasoning_engine.generate_initial_greeting(
