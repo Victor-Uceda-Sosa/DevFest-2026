@@ -2,6 +2,7 @@
 Clinical reasoning interaction routes.
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
+from fastapi.responses import StreamingResponse
 from uuid import UUID
 from typing import Optional
 import uuid
@@ -288,3 +289,135 @@ async def interact(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to process interaction: {str(e)}"
         )
+
+
+@router.post("/interact-stream")
+async def interact_stream(
+    session_id: str = Form(...),
+    audio_file: Optional[UploadFile] = File(None),
+    text_input: Optional[str] = Form(None)
+):
+    """
+    Stream audio response chunks to client as they're generated.
+    Provides lower latency by streaming TTS audio while response is generated.
+    
+    Args:
+        session_id: Session UUID (form field)
+        audio_file: Optional audio file upload
+        text_input: Optional text input (if no audio)
+        
+    Returns:
+        StreamingResponse with audio/mpeg content
+    """
+    print("\n" + "="*80)
+    print("🎙️  STREAMING AUDIO INTERACTION REQUEST RECEIVED")
+    print(f"Session ID: {session_id}")
+    print("="*80)
+    
+    async def stream_audio():
+        try:
+            # Validate session ID
+            try:
+                session_uuid = UUID(session_id)
+            except ValueError:
+                print(f"   ✗ Invalid session ID format: {session_id}")
+                return
+            
+            # Check if session exists
+            session = await supabase_service.get_session(session_uuid)
+            if not session:
+                print(f"   ✗ Session not found: {session_uuid}")
+                return
+            
+            # Get student input
+            student_input_text = ""
+            
+            if audio_file:
+                print(f"🎵 Processing audio file...")
+                validate_audio_file(audio_file)
+                audio_data = await audio_file.read()
+                
+                # Transcribe audio
+                print("🎤 Transcribing audio...")
+                transcription_result = await elevenlabs_service.transcribe_audio(audio_data)
+                if not transcription_result.get("success"):
+                    print(f"   ✗ Transcription failed")
+                    return
+                
+                student_input_text = transcription_result.get("transcript", "")
+                if not student_input_text or student_input_text.strip() == "":
+                    print(f"   ✗ No speech detected")
+                    return
+                
+            elif text_input:
+                validate_text_input(text_input)
+                student_input_text = text_input
+            else:
+                print("   ✗ No input provided")
+                return
+            
+            # Generate tutor response
+            print("🤖 Generating tutor response...")
+            response_data = await reasoning_engine.generate_response(
+                session_id=session_uuid,
+                student_input=student_input_text
+            )
+            
+            tutor_response = response_data["tutor_response"]
+            reasoning_metadata = response_data["reasoning_metadata"]
+            
+            # Clean response for TTS
+            import re
+            clean_text = tutor_response
+            clean_text = re.sub(r'<think>.*?</think>', '', clean_text, flags=re.DOTALL)
+            clean_text = re.sub(r'<[^>]+>', '', clean_text)
+            clean_text = clean_text.strip()
+            clean_text = re.sub(r'\s+', ' ', clean_text)
+            
+            if not clean_text:
+                print(f"   ⚠️  Cleaned text is empty")
+                return
+            
+            if len(clean_text) > 5000:
+                clean_text = clean_text[:4997] + "..."
+            
+            # Stream TTS audio chunks
+            print("🔊 Streaming TTS audio...")
+            from app.config import get_settings
+            settings = get_settings()
+            
+            chunk_count = 0
+            async for audio_chunk in elevenlabs_service.generate_voice_stream(
+                text=clean_text,
+                voice_id=settings.elevenlabs_voice_id
+            ):
+                if audio_chunk:
+                    chunk_count += 1
+                    print(f"   ✓ Sent chunk {chunk_count}")
+                    yield audio_chunk
+            
+            print(f"   ✓ Streaming complete ({chunk_count} chunks)")
+            
+            # Save interaction asynchronously (don't wait for it)
+            try:
+                await supabase_service.save_interaction(
+                    session_id=session_uuid,
+                    student_input=student_input_text,
+                    tutor_response=tutor_response,
+                    audio_url=None,  # Not uploading in streaming mode
+                    response_audio_url=None,
+                    reasoning_metadata=reasoning_metadata
+                )
+            except Exception as e:
+                print(f"   ⚠️  Failed to save interaction: {str(e)}")
+            
+        except Exception as e:
+            print(f"\n❌ ERROR in stream_audio:")
+            print(f"   {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+    
+    return StreamingResponse(
+        stream_audio(),
+        media_type="audio/mpeg"
+    )

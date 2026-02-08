@@ -163,6 +163,66 @@ class ElevenLabsService:
             import traceback
             traceback.print_exc()
             return b""
+    async def generate_voice_stream(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM"):
+        """
+        Generate voice from text using ElevenLabs streaming API.
+        Yields audio chunks as they're generated.
+
+        Args:
+            text: Text to convert to speech
+            voice_id: ElevenLabs voice ID (default is "Bella")
+
+        Yields:
+            Audio bytes chunks
+        """
+        try:
+            print(f"🔊 ElevenLabs Streaming TTS Starting...")
+            print(f"   Text length: {len(text)} characters")
+            print(f"   Voice ID: {voice_id}")
+
+            async with httpx.AsyncClient() as client:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/v1/text-to-speech/{voice_id}/stream",
+                    headers=self.headers,
+                    json={
+                        "text": text,
+                        "model_id": "eleven_monolingual_v1",
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.75,
+                        },
+                    },
+                    timeout=30.0,
+                ) as response:
+                    print(f"   HTTP Status: {response.status_code}")
+
+                    if response.status_code != 200:
+                        print(f"   ✗ Error response: {await response.aread()}")
+                        return
+
+                    chunk_count = 0
+                    async for chunk in response.aiter_bytes(chunk_size=1024):
+                        if chunk:
+                            chunk_count += 1
+                            print(f"   ✓ Streaming chunk {chunk_count}: {len(chunk)} bytes")
+                            yield chunk
+
+        except httpx.HTTPStatusError as e:
+            print(f"   ✗ HTTP Error generating voice:")
+            print(f"      Status: {e.response.status_code}")
+            import traceback
+            traceback.print_exc()
+        except httpx.TimeoutException as e:
+            print(f"   ✗ Timeout error generating voice: {e}")
+            import traceback
+            traceback.print_exc()
+        except Exception as e:
+            print(f"   ✗ Unexpected error generating voice:")
+            print(f"      Type: {type(e).__name__}")
+            print(f"      Message: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
 
 # Initialize service
