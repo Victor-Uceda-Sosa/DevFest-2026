@@ -53,16 +53,16 @@ export function Home({ onNavigate }: HomeProps) {
       </div>
 
       {/* Featured Interview Section */}
-      <Card className="p-12 border-2 border-cyan-500/30 bg-gradient-to-b from-slate-900 to-slate-950 hover:shadow-2xl hover:shadow-cyan-500/20 transition-all duration-300 cursor-pointer" onClick={() => onNavigate('interview')}>
-        <div className="flex flex-col items-center justify-center space-y-6">
-          <div className="p-6 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-            <Stethoscope className="w-12 h-12 text-white" />
+      <Card className="p-8 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer" onClick={() => onNavigate('interview')}>
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="p-3 rounded-full bg-cyan-500/20 flex items-center justify-center">
+            <Stethoscope className="w-8 h-8 text-cyan-400" />
           </div>
-          <div className="text-center space-y-2">
-            <h3 className="text-2xl font-bold text-white">
+          <div className="text-center space-y-1">
+            <h3 className="text-xl font-bold text-white">
               Start your clinical interview
             </h3>
-            <p className="text-gray-400">
+            <p className="text-sm text-gray-400">
               Practice with AI patients and develop your diagnostic skills
             </p>
           </div>
@@ -70,22 +70,22 @@ export function Home({ onNavigate }: HomeProps) {
       </Card>
 
       {/* Feature Cards */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-3 gap-4">
         {features.map((feature) => (
           <Card
             key={feature.id}
-            className="p-6 hover:shadow-xl hover:shadow-cyan-500/20 transition-all duration-300 cursor-pointer border-2 border-slate-700 bg-slate-900/50 hover:border-cyan-500/50 group"
+            className="p-5 hover:border-blue-500/50 transition-all duration-300 cursor-pointer border border-slate-700/50 bg-slate-900/30"
             onClick={() => onNavigate(feature.id as any)}
           >
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="p-4 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex-shrink-0">
-                <feature.icon className="w-6 h-6 text-white" />
+            <div className="flex flex-col items-center justify-center text-center space-y-3">
+              <div className="p-2.5 rounded-lg bg-cyan-500/15 flex-shrink-0">
+                <feature.icon className="w-5 h-5 text-cyan-400" />
               </div>
-              <div className="flex-1 space-y-2">
-                <h3 className="text-lg font-bold text-white">
+              <div className="flex-1 space-y-1">
+                <h3 className="text-base font-bold text-white">
                   {feature.title}
                 </h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
+                <p className="text-gray-400 text-xs">{feature.description}</p>
               </div>
             </div>
           </Card>

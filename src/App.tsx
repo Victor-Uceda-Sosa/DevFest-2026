@@ -43,7 +43,7 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, rgb(5, 5, 20), rgb(10, 15, 35))' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, rgb(15, 23, 42), rgb(20, 30, 50))' }}>
       {/* Header */}
       <header style={{ background: 'rgb(5, 5, 15)', borderBottom: '1px solid rgb(30, 60, 90)' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
