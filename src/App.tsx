@@ -43,16 +43,16 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, rgb(240, 249, 255), rgb(240, 253, 250))' }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, rgb(5, 5, 20), rgb(10, 15, 35))' }}>
       {/* Header */}
-      <header style={{ background: 'white', borderBottom: '1px solid rgb(191, 219, 254)' }}>
+      <header style={{ background: 'rgb(5, 5, 15)', borderBottom: '1px solid rgb(30, 60, 90)' }}>
         <div style={{ maxWidth: '80rem', margin: '0 auto', padding: '0 1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '4rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: 'linear-gradient(135deg, rgb(37, 99, 235), rgb(34, 197, 94))', padding: '0.5rem', borderRadius: '0.5rem', width: '1.5rem', height: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>
                 📚
               </div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'rgb(17, 24, 39)' }}>MedStudent Pro</h1>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'rgb(225, 243, 254)' }}>K2 Think</h1>
             </div>
 
             <nav style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -67,8 +67,8 @@ export default function App() {
                     padding: '0.5rem 1rem',
                     borderRadius: '0.5rem',
                     border: 'none',
-                    background: currentPage === page ? 'rgb(219, 234, 254)' : 'transparent',
-                    color: currentPage === page ? 'rgb(29, 78, 216)' : 'rgb(75, 85, 99)',
+                    background: currentPage === page ? 'rgba(0, 200, 255, 0.1)' : 'transparent',
+                    color: currentPage === page ? 'rgb(0, 200, 255)' : 'rgb(100, 150, 200)',
                     cursor: 'pointer',
                     fontWeight: currentPage === page ? '500' : '400',
                   }}

@@ -41,11 +41,14 @@ export function Home({ onNavigate }: HomeProps) {
     <div className="space-y-8">
       {/* Hero Section */}
       <div className="text-center space-y-4 py-8">
-        <h2 className="text-4xl font-bold text-gray-900">
-          Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-green-500">MedStudent Pro</span>
+        <h2 className="text-4xl font-bold text-white">
+          Welcome to <span className="text-cyan-400">K2 Think</span>
         </h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          AI-powered platform for clinical skills development, exam preparation, and academic success
+        <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+          AI-powered clinical reasoning tutor for medical students
+        </p>
+        <p className="text-base text-gray-500 max-w-2xl mx-auto">
+          Upload a paper, let agents distill it into concepts, videos, and living notebooks
         </p>
       </div>
 
