@@ -4,10 +4,8 @@ Used to inform case generation with evidence-based medical information.
 """
 
 import logging
-import os
 from typing import List, Dict, Any, Optional
 import chromadb
-from chromadb.config import Settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,25 +16,14 @@ class ChromaService:
     Stores medical textbooks, guidelines, and case studies for retrieval.
     """
 
-    def __init__(self, persist_dir: str = "./chroma_data"):
+    def __init__(self):
         """
-        Initialize ChromaDB client with persistent storage.
-
-        Args:
-            persist_dir: Directory to store ChromaDB data
+        Initialize ChromaDB client with in-memory storage.
         """
-        self.persist_dir = persist_dir
-        os.makedirs(persist_dir, exist_ok=True)
-
         try:
-            # Initialize ChromaDB client with persistent storage
-            settings = Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory=persist_dir,
-                anonymized_telemetry=False
-            )
-            self.client = chromadb.Client(settings)
-            logger.info(f"✅ ChromaDB initialized with storage at {persist_dir}")
+            # Initialize ChromaDB client with in-memory storage (simpler, more reliable)
+            self.client = chromadb.Client()
+            logger.info("✅ ChromaDB initialized (in-memory)")
         except Exception as e:
             logger.error(f"❌ Failed to initialize ChromaDB: {e}")
             self.client = None
@@ -52,6 +39,7 @@ class ChromaService:
                 logger.info("✅ Medical knowledge collection created/retrieved")
             except Exception as e:
                 logger.error(f"Failed to create medical collection: {e}")
+                self.client = None
 
     async def add_medical_knowledge(
         self,

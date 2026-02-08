@@ -7,7 +7,7 @@ import logging
 import json
 from typing import Dict, Any, Optional
 from app.services.kimi_service import kimi_service
-from app.services.chroma_service import chroma_service
+from app.services.medical_knowledge import medical_knowledge_base
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -17,13 +17,13 @@ settings = get_settings()
 class K2CaseGenerator:
     """
     Generates realistic patient cases using K2 (extended thinking)
-    informed by medical knowledge from ChromaDB.
+    informed by medical knowledge base.
     """
 
     def __init__(self):
-        """Initialize with K2 and ChromaDB services."""
+        """Initialize with K2 and medical knowledge services."""
         self.kimi = kimi_service
-        self.chroma = chroma_service
+        self.knowledge = medical_knowledge_base
 
     async def generate_case(
         self,
@@ -43,20 +43,9 @@ class K2CaseGenerator:
         try:
             logger.info(f"🧠 Generating case for: {medical_condition} (difficulty: {difficulty})")
 
-            # Retrieve medical knowledge from ChromaDB
-            medical_context = await self.chroma.retrieve_medical_context(
-                query=medical_condition,
-                top_k=3
-            )
-
-            if not medical_context:
-                logger.warning(f"No medical knowledge found for {medical_condition}, proceeding without context")
-                medical_knowledge = ""
-            else:
-                medical_knowledge = "\n\n".join([
-                    doc["content"] for doc in medical_context
-                ])
-                logger.info(f"✅ Retrieved {len(medical_context)} medical knowledge documents")
+            # Get medical knowledge for the condition
+            medical_knowledge = self.knowledge.format_context_for_prompt(medical_condition)
+            logger.info(f"✅ Retrieved medical knowledge for {medical_condition}")
 
             # Build prompt for K2
             case_prompt = self._build_case_generation_prompt(
@@ -121,10 +110,11 @@ class K2CaseGenerator:
 
         traits = difficulty_traits.get(difficulty, difficulty_traits["medium"])
 
-        return f"""You are an expert medical educator. Generate a realistic, detailed patient case for clinical education.
+        return f"""TASK: Generate ONLY a valid JSON object. No text, no markdown, no thinking. ONLY JSON.
+
+You are an expert medical educator. Generate a realistic, detailed patient case for clinical education.
 
 CONDITION: {medical_condition}
-
 DIFFICULTY LEVEL: {difficulty}
 
 CASE CHARACTERISTICS FOR {difficulty.upper()} DIFFICULTY:
@@ -133,18 +123,12 @@ CASE CHARACTERISTICS FOR {difficulty.upper()} DIFFICULTY:
 - Red Flag Obviousness: {traits['red_flag_obviousness']}
 - Overall Complexity: {traits['complexity']}
 
-MEDICAL KNOWLEDGE CONTEXT (to inform realistic case generation):
+MEDICAL KNOWLEDGE CONTEXT:
 {medical_knowledge if medical_knowledge else "No specific knowledge base available. Generate based on clinical experience."}
 
-INSTRUCTIONS:
-Generate a realistic patient case that:
-1. Matches the medical condition and difficulty level
-2. Uses evidence-based medical information
-3. Includes realistic patient demographics and presentation
-4. Has appropriate red flags for the difficulty level
-5. Is medically accurate and educationally valuable
+CRITICAL: Return ONLY the JSON object below. Do not include any other text, markdown, or thinking process.
 
-Return ONLY valid JSON (no markdown, no extra text) with this exact structure:
+JSON OBJECT (REQUIRED):
 
 {{
   "title": "Brief descriptive title (e.g., 'Acute Chest Pain in Middle-Aged Male')",
@@ -199,8 +183,18 @@ IMPORTANT:
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
 
+            # Find JSON in response (handles K2 returning text before JSON)
+            start_idx = response_text.find('{')
+            end_idx = response_text.rfind('}') + 1
+
+            if start_idx == -1 or end_idx <= start_idx:
+                logger.error(f"No JSON found in response")
+                return None
+
+            json_str = response_text[start_idx:end_idx]
+
             # Parse JSON
-            case_data = json.loads(response_text.strip())
+            case_data = json.loads(json_str)
 
             # Ensure required fields
             required_fields = ["title", "chief_complaint", "clinical_scenario", "differential_diagnoses"]

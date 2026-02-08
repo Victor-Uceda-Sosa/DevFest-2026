@@ -75,7 +75,19 @@ async def generate_cases_with_k2(
             if case_data:
                 # Store in database
                 try:
-                    stored_case = await supabase_service.create_case(case_data)
+                    # Convert dict to Pydantic model if needed
+                    from app.models.case import CaseCreate
+
+                    case_create = CaseCreate(
+                        title=case_data.get("title", "Untitled Case"),
+                        chief_complaint=case_data.get("chief_complaint", ""),
+                        clinical_scenario=case_data.get("clinical_scenario", {}),
+                        differential_diagnoses=case_data.get("differential_diagnoses", {}),
+                        red_flags=case_data.get("red_flags", []),
+                        learning_objectives=case_data.get("learning_objectives", [])
+                    )
+
+                    stored_case = await supabase_service.create_case(case_create)
                     generated_cases.append({
                         "id": str(stored_case.id),
                         "title": case_data.get("title"),
@@ -86,7 +98,7 @@ async def generate_cases_with_k2(
                     })
                     logger.info(f"✅ Stored case: {case_data.get('title')}")
                 except Exception as e:
-                    logger.error(f"Failed to store case: {e}")
+                    logger.error(f"Failed to store case: {e}", exc_info=True)
                     continue
             else:
                 logger.warning(f"Failed to generate case {i+1}")
