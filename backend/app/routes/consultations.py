@@ -9,6 +9,9 @@ from app.models.consultation import (
 from app.services.elevenlabs_service import elevenlabs_service
 import uuid
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -51,6 +54,82 @@ STANDARDIZED_CASES = [
 async def get_cases():
     """Get list of available standardized cases"""
     return STANDARDIZED_CASES
+
+
+@router.post("/start-simple")
+async def start_consultation_simple(
+    case_id: str,
+    difficulty: str = "medium",
+    user=Depends(get_current_user)
+):
+    """
+    Simplified consultation start - user only selects case and difficulty.
+    Everything else is auto-generated from case data.
+
+    Args:
+        case_id: UUID of the case to use
+        difficulty: Level of difficulty (easy, medium, hard)
+        user: Current authenticated user
+    """
+    try:
+        from app.services.supabase_service import supabase_service
+
+        # Fetch the case
+        case = await supabase_service.get_case(case_id)
+        if not case:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Case {case_id} not found"
+            )
+
+        # Create consultation
+        consultation_id = str(uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+
+        # Store with case data + difficulty
+        result = get_supabase().table("consultations").insert(
+            {
+                "id": consultation_id,
+                "user_id": user.id,
+                "case_id": str(case.id),
+                "case_title": case.title,
+                "chief_complaint": case.chief_complaint,
+                "difficulty": difficulty,
+                "case_data": {
+                    "clinical_scenario": case.clinical_scenario,
+                    "differential_diagnoses": case.differential_diagnoses,
+                    "red_flags": case.red_flags,
+                    "learning_objectives": case.learning_objectives,
+                },
+                "status": "in_progress",
+                "created_at": now,
+            }
+        ).execute()
+
+        if result.data:
+            return {
+                "success": True,
+                "consultation_id": consultation_id,
+                "case_id": str(case.id),
+                "case_title": case.title,
+                "chief_complaint": case.chief_complaint,
+                "difficulty": difficulty,
+                "message": f"Consultation started with {difficulty} difficulty"
+            }
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create consultation",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting consultation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error starting consultation: {str(e)}",
+        )
 
 
 @router.post("/start", response_model=ConsultationResponse)

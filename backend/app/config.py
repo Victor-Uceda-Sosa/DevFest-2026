@@ -10,6 +10,16 @@ class Settings(BaseSettings):
     featherless_api_key: str
     featherless_api_base: str = "https://api.featherless.ai/v1"
     featherless_model: str = "moonshotai/Kimi-K2.5"
+
+    # Claude API
+    anthropic_api_key: str = ""  # Optional, for case generation
+
+    # Reddit API (for patient case scraping)
+    reddit_client_id: str = ""  # Optional
+    reddit_client_secret: str = ""  # Optional
+
+    # SafetyKit API (for content filtering)
+    safetykit_api_key: str = ""  # Optional
     
     # ElevenLabs & AssemblyAI
     elevenlabs_api_key: str
