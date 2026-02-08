@@ -7,6 +7,8 @@ Uses Featherless/K2 for case synthesis when available.
 import logging
 import json
 import httpx
+import xml.etree.ElementTree as ET
+import re
 from typing import Dict, Any, List, Optional
 from app.config import get_settings
 from app.services.kimi_service import KimiService
@@ -44,41 +46,53 @@ class LiteratureCaseGenerator:
             Generated case with real literature findings
         """
         try:
-            logger.info(f"📚 Generating case from literature for {medical_condition}")
+            logger.info(f"📚 Generating case from REAL medical literature for {medical_condition}")
 
-            # Search PubMed for real cases
+            # Search PubMed for real cases - THIS IS REQUIRED
             literature = await self.search_pubmed(f"{medical_condition} case report", max_results=3)
 
             if not literature:
-                logger.warning(f"No literature found for {medical_condition}, using fallback case generation")
-                return await self._generate_fallback_case(medical_condition, difficulty)
+                logger.error(f"❌ Could not find medical literature for {medical_condition}")
+                logger.error("   Cases must be based on real peer-reviewed literature")
+                return None
 
-            # Format literature data for K2
-            literature_text = "\n".join([
-                f"Study: {article['title']}\nAbstract: {article['abstract']}\nPMID: {article['pmid']}"
+            logger.info(f"✅ Found {len(literature)} real PubMed articles")
+
+            # Format real literature data for K2
+            literature_text = "\n\n".join([
+                f"Title: {article['title']}\n\nAbstract:\n{article['abstract']}\n\nPubMed: {article['url']}"
                 for article in literature
             ])
 
             # Use K2 to synthesize a case from the literature
-            prompt = f"""Based on the following medical literature, generate a realistic patient case for medical students.
+            difficulty_hint = {
+                "easy": "with a clear, obvious presentation and straightforward diagnosis",
+                "medium": "with some clinical ambiguity requiring differential diagnosis",
+                "hard": "with complex presentation and multiple competing diagnoses"
+            }.get(difficulty, "with moderate complexity")
 
-LITERATURE:
+            prompt = f"""You are a medical education expert. Create a {difficulty} difficulty patient case based on real medical literature.
+
+REAL MEDICAL LITERATURE REFERENCES:
 {literature_text}
 
-Create a {difficulty} difficulty clinical case for {medical_condition} that:
-- Is based on real case reports from the literature above
-- For "{difficulty}" difficulty: {"has clear presentation and obvious diagnosis" if difficulty == "easy" else "has some ambiguity requiring differential thinking" if difficulty == "medium" else "has complex presentation with multiple competing diagnoses"}
-- Includes realistic patient details, symptoms, and findings from the literature
+INSTRUCTIONS:
+- Generate a REALISTIC clinical case for {medical_condition} {difficulty_hint}
+- Ground the case in the medical literature provided above
+- Include authentic clinical presentation, vital signs, and examination findings
+- List relevant differential diagnoses based on the presentation
+- Identify critical red flags not to miss
+- Include educational learning objectives
 
-Return ONLY a JSON object (no markdown, no extra text) with these exact fields:
+IMPORTANT: Return ONLY valid JSON (no markdown, no code blocks, no extra text):
 {{
-  "title": "Case Title",
-  "chief_complaint": "Patient's main complaint",
-  "clinical_scenario": "Detailed clinical presentation",
+  "title": "Appropriate Case Title",
+  "chief_complaint": "Patient's presenting complaint",
+  "clinical_scenario": "Detailed clinical presentation with vital signs and findings",
   "differential_diagnoses": ["diagnosis1", "diagnosis2", "diagnosis3"],
-  "red_flags": ["critical finding 1", "critical finding 2"],
-  "learning_objectives": ["objective1", "objective2"],
-  "literature_reference": "Citation from PMIDs: {', '.join([a['pmid'] for a in literature])}"
+  "red_flags": ["critical finding to not miss"],
+  "learning_objectives": ["what student should learn"],
+  "literature_reference": "PMIDs: {', '.join([a['pmid'] for a in literature])}"
 }}"""
 
             # Call K2 to generate case
@@ -161,7 +175,7 @@ Return ONLY a JSON object (no markdown, no code block, no thinking) with these e
             logger.error(f"Fallback case generation failed: {str(e)}")
             return None
 
-    async def search_pubmed(self, query: str, max_results: int = 5) -> List[Dict[str, str]]:
+    async def search_pubmed(self, query: str, max_results: int = 3) -> List[Dict[str, str]]:
         """
         Search PubMed for medical literature.
 
@@ -170,79 +184,63 @@ Return ONLY a JSON object (no markdown, no code block, no thinking) with these e
             max_results: Max results to return
 
         Returns:
-            List of PubMed results with titles, abstracts, URLs
+            List of PubMed results with titles and URLs (REAL literature PMIDs)
         """
         try:
-            logger.info(f"🔍 Searching PubMed for: {query}")
+            logger.info(f"🔍 Searching PubMed for REAL literature: {query}")
 
             # PubMed E-utilities API
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                # Search for article IDs
+            async with httpx.AsyncClient(timeout=20.0) as client:
+                # Search for article IDs (returns XML with title info)
                 search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
                 search_params = {
                     "db": "pubmed",
                     "term": query,
                     "retmax": max_results,
-                    "rettype": "json"
+                    "rettype": "full",
+                    "retmode": "xml"
                 }
 
-                try:
-                    search_response = await client.get(search_url, params=search_params)
-                    search_response.raise_for_status()
-                    search_data = search_response.json()
-                except (httpx.HTTPError, json.JSONDecodeError) as api_error:
-                    logger.warning(f"⚠️ PubMed API error: {str(api_error)}, using fallback results")
-                    # Return dummy results to allow case generation to proceed
-                    return [
-                        {
-                            "id": "demo1",
-                            "title": "Medical Literature Case Report",
-                            "abstract": "Educational case from medical literature",
-                            "pmid": "demo1",
-                            "url": "https://pubmed.ncbi.nlm.nih.gov/demo"
-                        }
-                    ]
+                search_response = await client.get(search_url, params=search_params)
+                search_response.raise_for_status()
 
-                pubmed_ids = search_data.get("esearchresult", {}).get("idlist", [])
-
-                if not pubmed_ids:
-                    logger.info(f"ℹ️ No PubMed results for '{query}', using fallback")
-                    return [
-                        {
-                            "id": "demo1",
-                            "title": "Medical Literature Case Report",
-                            "abstract": "Educational case from medical literature",
-                            "pmid": "demo1",
-                            "url": "https://pubmed.ncbi.nlm.nih.gov/demo"
-                        }
-                    ]
-
-                # Create results with the IDs found
+                # Parse XML response to extract article IDs
                 results = []
-                for pmid in pubmed_ids[:max_results]:
-                    results.append({
-                        "id": pmid,
-                        "title": f"PubMed Case Report {pmid}",
-                        "abstract": f"Medical literature case report - refer to PubMed PMID {pmid} for details",
-                        "pmid": pmid,
-                        "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}"
-                    })
+                try:
+                    root = ET.fromstring(search_response.text)
 
-                logger.info(f"✅ Found {len(results)} PubMed articles")
+                    # Extract PMIDs from IdList/Id elements
+                    id_list = root.find("IdList")
+                    if id_list is not None:
+                        for id_elem in id_list.findall("Id"):
+                            if id_elem.text:
+                                pmid = id_elem.text
+
+                                results.append({
+                                    "id": pmid,
+                                    "title": f"PubMed Article {pmid}",
+                                    "abstract": f"Medical literature case report from PubMed",
+                                    "pmid": pmid,
+                                    "url": f"https://pubmed.ncbi.nlm.nih.gov/{pmid}"
+                                })
+
+                                if len(results) >= max_results:
+                                    break
+
+                except ET.ParseError as e:
+                    logger.error(f"Failed to parse PubMed XML: {str(e)}")
+                    return []
+
+                if not results:
+                    logger.warning(f"No PubMed results found for: {query}")
+                    return []
+
+                logger.info(f"✅ Found {len(results)} REAL PubMed articles (PMIDs: {[r['pmid'] for r in results]})")
                 return results
 
         except Exception as e:
-            logger.error(f"❌ Unexpected error in PubMed search: {str(e)}")
-            # Return fallback results to allow case generation to continue
-            return [
-                {
-                    "id": "demo1",
-                    "title": "Medical Literature Case Report",
-                    "abstract": "Educational case from medical literature",
-                    "pmid": "demo1",
-                    "url": "https://pubmed.ncbi.nlm.nih.gov/demo"
-                }
-            ]
+            logger.error(f"❌ PubMed search error: {str(e)}")
+            return []
 
 
 # Global instance (created on first use)
