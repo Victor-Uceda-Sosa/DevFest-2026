@@ -480,12 +480,12 @@ class ReasoningEngine:
         # Take only valid patient dialogue
         patient_text = response[:cutoff_pos].strip()
 
-        # If too long, take only first 1-3 sentences (natural patient response)
+        # If too long, take only first 4-6 sentences (allow more detailed patient responses)
         sentences = re.split(r'(?<=[.!?])\s+', patient_text)
 
-        # Keep only first 3 meaningful sentences
+        # Keep only first 6 meaningful sentences for more detailed responses
         result = []
-        for sent in sentences[:3]:
+        for sent in sentences[:6]:
             sent = sent.strip()
             if not sent or len(sent) < 3:
                 continue

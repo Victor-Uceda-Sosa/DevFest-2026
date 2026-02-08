@@ -185,8 +185,8 @@ class KimiService:
             system_prompt=system_prompt,
             user_message=student_input,
             conversation_history=conversation_history,
-            temperature=0.8,  # Slightly higher for more natural patient responses
-            max_tokens=500  # Patient response limit
+            temperature=0.85,  # Higher for more detailed and natural patient responses
+            max_tokens=1000  # Allow longer, more detailed patient responses
         )
 
         # Extract reasoning metadata

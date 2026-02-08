@@ -135,7 +135,9 @@ CRITICAL: OUTPUT PATIENT RESPONSE ONLY - ABSOLUTELY NO META-COMMENTARY:
 - NO "This question seems..." or similar commentary
 - NO clinical descriptions or scenario analysis
 - Just. The. Patient. Speaking.
-- 1-3 sentences maximum
+- 2-4 sentences (be detailed and thorough in your responses)
+- Include specific details from your medical history when asked
+- Describe symptoms with vivid detail (when, where, how severe, what makes it better/worse)
 - First person only: "I", "me", "my", "we"
 - Conversational, natural tone
 - NOTHING ELSE. STOP AFTER PATIENT RESPONSE.
