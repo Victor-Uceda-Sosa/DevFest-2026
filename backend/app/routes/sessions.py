@@ -215,39 +215,52 @@ async def get_session(session_id: UUID):
 
 
 @router.post("/{session_id}/complete", response_model=dict)
-async def complete_session(session_id: UUID):
+async def complete_session(session_id: UUID, case_id: str = None):
     """
     Mark a session as completed and get evaluation.
-    
+
     Args:
         session_id: Session UUID
-        
+        case_id: Optional case ID (required for demo sessions)
+
     Returns:
         Session evaluation and summary
     """
     try:
-        # Check if session exists
-        session = await supabase_service.get_session(session_id)
-        if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
+        # Check if this is a demo session (dummy UUID)
+        is_demo_session = str(session_id) == "00000000-0000-0000-0000-000000000000"
+
+        if is_demo_session:
+            # For demo sessions, skip database operations
+            print(f"✓ Demo session completion for {case_id}")
+            updated_session = None
+            session_status = "completed"
+            completed_at = datetime.now()
+        else:
+            # Check if real session exists
+            session = await supabase_service.get_session(session_id)
+            if not session:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Session not found"
+                )
+
+            # Update status
+            updated_session = await supabase_service.update_session_status(
+                session_id=session_id,
+                status=SessionStatus.COMPLETED
             )
-        
-        # Update status
-        updated_session = await supabase_service.update_session_status(
-            session_id=session_id,
-            status=SessionStatus.COMPLETED
-        )
-        
-        # Get evaluation
-        evaluation = await reasoning_engine.evaluate_session(session_id)
+            session_status = updated_session.status
+            completed_at = updated_session.completed_at
+
+        # Get evaluation (pass case_id for demo sessions)
+        evaluation = await reasoning_engine.evaluate_session(session_id, case_id=case_id)
         print(f"✅ Evaluation returned: {evaluation}")
 
         response = {
             "session_id": str(session_id),
-            "status": updated_session.status,
-            "completed_at": updated_session.completed_at.isoformat() if updated_session.completed_at else None,
+            "status": session_status,
+            "completed_at": completed_at.isoformat() if completed_at else None,
             "evaluation": evaluation.get("evaluation"),
             "summary": evaluation.get("summary")
         }

@@ -44,10 +44,16 @@ export const getSession = async (sessionId: string): Promise<any> => {
 };
 
 export const completeSession = async (
-  sessionId: string
+  sessionId: string,
+  caseId?: string
 ): Promise<SessionCompleteResponse> => {
+  const params = new URLSearchParams();
+  if (caseId) {
+    params.append('case_id', caseId);
+  }
+
   const response = await api.post<SessionCompleteResponse>(
-    `/api/sessions/${sessionId}/complete`
+    `/api/sessions/${sessionId}/complete${params.toString() ? '?' + params.toString() : ''}`
   );
   return response.data;
 };

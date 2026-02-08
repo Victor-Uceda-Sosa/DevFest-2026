@@ -365,7 +365,8 @@ export function MockInterview() {
       setError(null);
       setIsComplete(true);
 
-      const result = await interviewApi.completeSession(sessionId);
+      // Pass case_id for proper evaluation (especially for demo cases)
+      const result = await interviewApi.completeSession(sessionId, selectedCase?.id);
       console.log('📋 Feedback received:', result);
       setFeedback(result);
 

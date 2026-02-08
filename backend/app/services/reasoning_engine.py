@@ -271,24 +271,62 @@ class ReasoningEngine:
     
     async def evaluate_session(
         self,
-        session_id: UUID
+        session_id: UUID,
+        case_id: str = None
     ) -> Dict[str, Any]:
         """
         Evaluate a student's overall performance in a session.
 
         Args:
             session_id: Session UUID
+            case_id: Optional case ID (required for demo sessions)
 
         Returns:
             Evaluation with scores, feedback, and summary
         """
-        # Load session data
-        session = await supabase_service.get_session(session_id)
-        if not session:
-            raise Exception("Session not found")
+        # Check if this is a demo session
+        is_demo_session = str(session_id) == "00000000-0000-0000-0000-000000000000"
 
-        case = await supabase_service.get_case(session.case_id)
-        interactions = await supabase_service.get_session_history(session_id)
+        if is_demo_session:
+            # For demo sessions, load case from demo_cases
+            if not case_id:
+                raise Exception("case_id required for demo session evaluation")
+
+            from app.data.demo_cases import get_demo_case
+            demo_case_data = get_demo_case(case_id)
+            if not demo_case_data:
+                raise Exception(f"Demo case {case_id} not found")
+
+            # Create a mock case object from demo case data
+            class MockCase:
+                def __init__(self, data):
+                    self.id = case_id
+                    self.title = data.get("title")
+                    self.chief_complaint = data.get("chief_complaint")
+                    self.clinical_scenario = data.get("clinical_scenario")
+                    self.differential_diagnoses = data.get("differential_diagnoses", [])
+                    self.red_flags = data.get("red_flags", [])
+                    self.learning_objectives = data.get("learning_objectives", [])
+
+            case = MockCase(demo_case_data)
+
+            # For demo sessions, interactions aren't stored in database
+            # Return a basic evaluation without real interaction data
+            print(f"📌 Evaluating demo session for {case_id}")
+        else:
+            # For real sessions, load from database
+            session = await supabase_service.get_session(session_id)
+            if not session:
+                raise Exception("Session not found")
+
+            case = await supabase_service.get_case(session.case_id)
+            interactions = await supabase_service.get_session_history(session_id)
+
+        # Get interactions - for demo sessions, this will be empty but evaluation still works
+        if not is_demo_session:
+            interactions = await supabase_service.get_session_history(session_id)
+        else:
+            interactions = []  # No interactions stored for demo sessions
 
         # Collect all red flags and diagnoses mentioned
         all_red_flags = set()
