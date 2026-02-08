@@ -5,7 +5,7 @@ Main entry point for the clinical reasoning backend.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routes import sessions, reasoning, cases, consultations, case_generation
+from app.routes import sessions, reasoning, cases, consultations, case_generation, dedalus_cases
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -54,6 +54,11 @@ app.include_router(
     case_generation.router,
     prefix="/api/cases/generate",
     tags=["case-generation"]
+)
+
+app.include_router(
+    dedalus_cases.router,
+    tags=["dedalus"]
 )
 
 

@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     featherless_api_base: str = "https://api.featherless.ai/v1"
     featherless_model: str = "moonshotai/Kimi-K2.5"
 
+    # Dedalus AI (Literature-based case generation)
+    dedalus_api_key: str = ""  # Optional, for literature search and case generation
+
     # Claude API
     anthropic_api_key: str = ""  # Optional, for case generation
 
@@ -52,11 +55,12 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.cors_origins.split(",")]
 
 
-# Settings factory with caching
-@lru_cache()
+# Settings factory - no caching to pick up .env changes
 def get_settings():
-    return Settings()
+    s = Settings()
+    print(f"[CONFIG] Loaded ELEVENLABS_API_KEY from .env: {s.elevenlabs_api_key[:10]}...{s.elevenlabs_api_key[-4:]}")
+    return s
 
 
-# Global settings instance (for backward compatibility)
+# Global settings instance for main.py and other modules
 settings = get_settings()

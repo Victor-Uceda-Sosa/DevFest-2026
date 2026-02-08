@@ -5,12 +5,23 @@ export interface ApiError {
   status?: number;
 }
 
+// Medical Image Models (for Dedalus multimodality)
+export interface MedicalImage {
+  id: string;
+  type: 'xray' | 'ct' | 'mri' | 'ultrasound' | 'lab' | 'physical-exam' | 'photo';
+  url: string;
+  title: string;
+  description?: string;
+  findings?: string;
+}
+
 // Case Models
 export interface CasePublic {
   id: string;
   title: string;
   chief_complaint: string;
   learning_objectives: string[];
+  medical_images?: MedicalImage[];
   created_at?: string;
 }
 
@@ -52,6 +63,7 @@ export interface SessionStartResponse {
   status: string;
   started_at: string;
   initial_greeting: string;
+  greeting_audio_url?: string | null;
   case_info: CasePublic;
 }
 

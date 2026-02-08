@@ -1,12 +1,12 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Stethoscope, BookOpen, Calendar, ArrowRight } from 'lucide-react';
 import { Card } from './ui/card';
+import { useAuth } from '../contexts/AuthContext';
 
-interface HomeProps {
-  onNavigate: (page: 'home' | 'interview' | 'mcat' | 'scheduling') => void;
-}
-
-export function Home({ onNavigate }: HomeProps) {
+export function Home() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const features = [
     {
       id: 'interview',
@@ -42,18 +42,15 @@ export function Home({ onNavigate }: HomeProps) {
       {/* Hero Section */}
       <div className="text-center space-y-4 py-8">
         <h2 className="text-4xl font-bold text-white">
-          Welcome to <span className="text-cyan-400">K2 Think</span>
+          Welcome to <span className="text-cyan-400">Praxis</span>
         </h2>
         <p className="text-lg text-gray-400 max-w-2xl mx-auto">
           AI-powered clinical reasoning tutor for medical students
         </p>
-        <p className="text-base text-gray-500 max-w-2xl mx-auto">
-          Upload a paper, let agents distill it into concepts, videos, and living notebooks
-        </p>
       </div>
 
       {/* Featured Interview Section */}
-      <Card className="p-12 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer max-w-2xl mx-auto w-full" onClick={() => onNavigate('interview')}>
+      <Card className="p-12 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer max-w-2xl mx-auto w-full" onClick={() => navigate(isAuthenticated ? '/interview' : '/login')}>
         <div className="flex flex-col items-center justify-center space-y-5">
           <div className="p-3 rounded-full bg-cyan-500/20 flex items-center justify-center">
             <Stethoscope className="w-8 h-8 text-cyan-400" />
@@ -75,7 +72,14 @@ export function Home({ onNavigate }: HomeProps) {
           <Card
             key={feature.id}
             className="p-6 hover:border-blue-500/50 transition-all duration-300 cursor-pointer border border-slate-700/50 bg-slate-900/30"
-            onClick={() => onNavigate(feature.id as any)}
+            onClick={() => {
+              if (!isAuthenticated) {
+                navigate('/login');
+              } else {
+                const path = feature.id === 'interview' ? '/interview' : feature.id === 'mcat' ? '/mcat' : '/scheduling';
+                navigate(path);
+              }
+            }}
           >
             <div className="flex flex-col items-center justify-center text-center space-y-4">
               <div className="p-2.5 rounded-lg bg-cyan-500/15 flex-shrink-0">

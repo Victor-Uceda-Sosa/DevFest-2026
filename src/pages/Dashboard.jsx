@@ -54,7 +54,7 @@ const Dashboard = () => {
             },
             {
               name: 'Clinical Reasoning',
-              description: 'Learn diagnostic reasoning with K2 Think',
+              description: 'Learn diagnostic reasoning with Praxis',
               icon: '🧠',
             },
             {

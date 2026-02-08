@@ -1,5 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 function AppLoader() {
@@ -52,7 +54,13 @@ function AppLoader() {
     );
   }
 
-  return <App />;
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
+  );
 }
 
 const root = document.getElementById('root');

@@ -1,19 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { Card } from '../components/ui/card';
+import { Calendar, Clock, Award, Zap } from 'lucide-react';
 import apiClient from '../services/api';
-import { Calendar, Clock, Zap, TrendingUp } from 'lucide-react';
 
 interface Consultation {
   id: string;
+  case_name: string;
   case_id: string;
-  case_title: string;
-  duration_seconds?: number;
-  empathy_score?: number;
-  clarity_score?: number;
-  completeness_score?: number;
-  status: string;
-  created_at: string;
+  started_at: string;
   completed_at?: string;
+  duration_minutes?: number;
+  status: string;
+  scores?: {
+    empathy?: number;
+    clarity?: number;
+    completeness?: number;
+  };
 }
 
 export default function Profile() {
@@ -26,9 +29,8 @@ export default function Profile() {
     const fetchConsultations = async () => {
       try {
         setLoading(true);
-        setError(null);
         const response = await apiClient.get('/api/consultations/');
-        setConsultations(response.data);
+        setConsultations(response.data || []);
       } catch (err) {
         console.error('Error fetching consultations:', err);
         setError('Failed to load consultation history');
@@ -37,207 +39,193 @@ export default function Profile() {
       }
     };
 
-    fetchConsultations();
-  }, []);
+    if (user) {
+      fetchConsultations();
+    }
+  }, [user]);
 
-  // Calculate statistics
-  const stats = {
-    totalSessions: consultations.length,
-    completedSessions: consultations.filter(c => c.status === 'completed').length,
-    averageDuration: consultations.length > 0
-      ? Math.round(consultations.reduce((sum, c) => sum + (c.duration_seconds || 0), 0) / consultations.length / 60)
-      : 0,
-    averageEmpathy: consultations.length > 0
-      ? (consultations.reduce((sum, c) => sum + (c.empathy_score || 0), 0) / consultations.length).toFixed(1)
-      : 0,
-  };
+  // Calculate stats
+  const totalSessions = consultations.length;
+  const completedSessions = consultations.filter(c => c.status === 'completed' || c.completed_at).length;
+  const avgDuration = consultations.length > 0
+    ? Math.round(consultations.reduce((sum, c) => sum + (c.duration_minutes || 0), 0) / consultations.length)
+    : 0;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const formatTime = (seconds?: number) => {
-    if (!seconds) return 'N/A';
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}m ${secs}s`;
-  };
+  const joinDate = user?.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'N/A';
 
   return (
-    <div className="min-h-screen bg-slate-900/40">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Your Profile</h1>
-            <p className="mt-2 text-gray-400">{user?.email}</p>
-            <p className="text-sm text-gray-500">
-              Member since {formatDate(user?.created_at || new Date().toISOString())}
-            </p>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold text-white mb-2">Your Profile</h1>
+        <p className="text-gray-400">View your progress and past consultation sessions</p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Stats Section */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-400">Total Sessions</p>
-                <p className="text-3xl font-bold text-white">{stats.totalSessions}</p>
-              </div>
-              <div className="p-3 bg-blue-900/20 rounded-lg">
-                <Zap size={24} className="text-cyan-400" />
-              </div>
-            </div>
+      {/* User Info Card */}
+      <Card className="p-6 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border border-cyan-500/30">
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm text-gray-400">Email</p>
+            <p className="text-xl font-semibold text-white">{user?.email}</p>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-400">Completed</p>
-                <p className="text-3xl font-bold text-white">{stats.completedSessions}</p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <TrendingUp size={24} className="text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-400">Avg Duration</p>
-                <p className="text-3xl font-bold text-white">{stats.averageDuration}m</p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Clock size={24} className="text-purple-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-400">Avg Empathy Score</p>
-                <p className="text-3xl font-bold text-white">{stats.averageEmpathy}</p>
-              </div>
-              <div className="p-3 bg-orange-100 rounded-lg">
-                <Calendar size={24} className="text-orange-600" />
-              </div>
-            </div>
+          <div>
+            <p className="text-sm text-gray-400">Member Since</p>
+            <p className="text-lg text-cyan-400">{joinDate}</p>
           </div>
         </div>
+      </Card>
 
-        {/* Past Sessions Section */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-slate-700/50 px-6 py-4">
-            <h2 className="text-xl font-semibold text-white">Past Consultation Sessions</h2>
+      {/* Statistics Cards */}
+      <div className="grid md:grid-cols-4 gap-4">
+        <Card className="p-4 bg-gradient-to-br from-blue-900/30 to-blue-900/20 border border-blue-500/30">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/20">
+              <Award className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">Total Sessions</p>
+              <p className="text-2xl font-bold text-white">{totalSessions}</p>
+            </div>
           </div>
+        </Card>
 
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <div
-                  style={{
-                    display: 'inline-block',
-                    animation: 'spin 1s linear infinite',
-                    width: '2rem',
-                    height: '2rem',
-                    borderRadius: '9999px',
-                    borderTop: '2px solid rgb(37, 99, 235)',
-                    borderRight: 'transparent',
-                    borderBottom: '2px solid rgb(37, 99, 235)',
-                    borderLeft: 'transparent',
-                  }}
-                ></div>
-                <p className="mt-4 text-gray-400">Loading sessions...</p>
-              </div>
+        <Card className="p-4 bg-gradient-to-br from-emerald-900/30 to-emerald-900/20 border border-emerald-500/30">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-emerald-500/20">
+              <Zap className="w-5 h-5 text-emerald-400" />
             </div>
-          ) : error ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-red-600">{error}</p>
+            <div>
+              <p className="text-sm text-gray-400">Completed</p>
+              <p className="text-2xl font-bold text-white">{completedSessions}</p>
             </div>
-          ) : consultations.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-gray-400 mb-4">No sessions yet. Start your first interview!</p>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-gradient-to-br from-cyan-900/30 to-cyan-900/20 border border-cyan-500/30">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-cyan-500/20">
+              <Clock className="w-5 h-5 text-cyan-400" />
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-slate-900/40 border-b border-slate-700/50">
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Case</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Date</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Duration</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Scores</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {consultations.map((consultation, index) => (
-                    <tr key={consultation.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-900/40'}>
-                      <td className="px-6 py-4 text-sm">
-                        <div>
-                          <p className="font-medium text-white">{consultation.case_title}</p>
-                          <p className="text-xs text-gray-400">{consultation.case_id}</p>
+            <div>
+              <p className="text-sm text-gray-400">Avg Duration</p>
+              <p className="text-2xl font-bold text-white">{avgDuration} min</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 bg-gradient-to-br from-purple-900/30 to-purple-900/20 border border-purple-500/30">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-purple-500/20">
+              <Calendar className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-400">This Month</p>
+              <p className="text-2xl font-bold text-white">
+                {consultations.filter(c => {
+                  const date = new Date(c.started_at);
+                  const now = new Date();
+                  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+                }).length}
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Past Sessions */}
+      <div>
+        <h2 className="text-2xl font-bold text-white mb-4">Past Sessions</h2>
+
+        {loading ? (
+          <Card className="p-8 bg-slate-800/30 border border-slate-700/50 text-center">
+            <p className="text-gray-400">Loading sessions...</p>
+          </Card>
+        ) : error ? (
+          <Card className="p-8 bg-red-900/20 border border-red-500/30">
+            <p className="text-red-400">{error}</p>
+          </Card>
+        ) : consultations.length === 0 ? (
+          <Card className="p-8 bg-slate-800/30 border border-slate-700/50 text-center">
+            <p className="text-gray-400">No sessions yet. Start your first interview!</p>
+          </Card>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-700/50">
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Case</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Date</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Duration</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Scores</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consultations.map((consultation) => {
+                  const startDate = new Date(consultation.started_at);
+                  const dateStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                  const timeStr = startDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+                  return (
+                    <tr
+                      key={consultation.id}
+                      className="border-b border-slate-700/30 hover:bg-slate-800/20 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="text-sm">
+                          <p className="text-white font-medium">{consultation.case_name || 'Unknown Case'}</p>
+                          <p className="text-gray-500 text-xs">{consultation.case_id}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
-                        {formatDate(consultation.created_at)}
+                      <td className="px-4 py-3 text-sm text-gray-400">
+                        <div>{dateStr}</div>
+                        <div className="text-xs text-gray-500">{timeStr}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
-                        {formatTime(consultation.duration_seconds)}
+                      <td className="px-4 py-3 text-sm text-gray-400">
+                        {consultation.duration_minutes ? `${consultation.duration_minutes} min` : 'N/A'}
                       </td>
-                      <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                            consultation.status === 'completed'
-                              ? 'bg-green-100 text-green-800'
-                              : consultation.status === 'in_progress'
-                              ? 'bg-blue-900/20 text-blue-800'
-                              : 'bg-slate-800/50 text-gray-800'
-                          }`}
-                        >
-                          {consultation.status}
+                      <td className="px-4 py-3">
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                          consultation.status === 'completed' || consultation.completed_at
+                            ? 'bg-emerald-500/20 text-emerald-400'
+                            : consultation.status === 'in_progress'
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'bg-slate-500/20 text-gray-400'
+                        }`}>
+                          {consultation.status === 'completed' || consultation.completed_at ? 'Completed' : consultation.status || 'In Progress'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
-                        {consultation.empathy_score || consultation.clarity_score || consultation.completeness_score ? (
+                      <td className="px-4 py-3 text-sm">
+                        {consultation.scores ? (
                           <div className="space-y-1">
-                            {consultation.empathy_score && (
-                              <p>🤝 Empathy: {consultation.empathy_score.toFixed(1)}</p>
+                            {consultation.scores.empathy !== undefined && (
+                              <div className="text-gray-400">
+                                Empathy: <span className="text-cyan-400">{consultation.scores.empathy}/10</span>
+                              </div>
                             )}
-                            {consultation.clarity_score && (
-                              <p>💬 Clarity: {consultation.clarity_score.toFixed(1)}</p>
+                            {consultation.scores.clarity !== undefined && (
+                              <div className="text-gray-400">
+                                Clarity: <span className="text-cyan-400">{consultation.scores.clarity}/10</span>
+                              </div>
                             )}
-                            {consultation.completeness_score && (
-                              <p>✓ Completeness: {consultation.completeness_score.toFixed(1)}</p>
+                            {consultation.scores.completeness !== undefined && (
+                              <div className="text-gray-400">
+                                Completeness: <span className="text-cyan-400">{consultation.scores.completeness}/10</span>
+                              </div>
                             )}
                           </div>
                         ) : (
-                          <span className="text-gray-400">-</span>
+                          <span className="text-gray-500">No scores</span>
                         )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

@@ -36,14 +36,23 @@ class ReasoningEngine:
         if not case:
             raise Exception("Case not found")
         
-        # Use static template-based greeting (no API call to avoid rate limits)
-        # Select greeting template based on case_id hash for variety but consistency
+        # Extract just the symptoms from clinical description
+        # Remove clinical prefixes like "22-year-old presents with"
+        import re
+        symptoms = case.chief_complaint.lower()
+        # Remove age/demographic info (e.g., "22-year-old college student presents with")
+        symptoms = re.sub(r'^.*?(?:presents with|complains of|reports|with)\s+', '', symptoms)
+        # Clean up "for X days" type phrases
+        symptoms = re.sub(r'\s+(?:for|over|during)\s+\d+.*?(?=\.|$)', '', symptoms)
+        symptoms = symptoms.rstrip('.')
+
+        # Use natural, conversational greetings in first person
         greeting_templates = [
-            f"Hello doctor, I'm here because {case.chief_complaint.lower()}.",
-            f"Hi doctor, I've been experiencing {case.chief_complaint.lower()} and I'm worried about it.",
-            f"Doctor, I need help. I've been having {case.chief_complaint.lower()}.",
-            f"Hello, um... I've been having {case.chief_complaint.lower()} and it's been bothering me.",
-            f"Good morning doctor. {case.chief_complaint}. That's why I'm here today."
+            f"Hi, thanks for seeing me. So I've been having {symptoms} and I'm not sure what's going on.",
+            f"Yeah, so I've been dealing with {symptoms}. It started a few days ago and it's been getting worse.",
+            f"Um, I'm not really sure what's happening, but I have {symptoms}. I'm kind of worried about it.",
+            f"Hey doc, thanks for taking me. So basically I have {symptoms} and I don't know if it's serious or what.",
+            f"So I came in today because I've been experiencing {symptoms}. Can you help me figure out what this is?"
         ]
         
         # Select template based on case_id for consistency (same case = same greeting style)
@@ -98,7 +107,10 @@ class ReasoningEngine:
             case_context=case_context,
             conversation_history=conversation_history
         )
-        
+
+        # Extract ONLY the patient response (filter out K2's thinking/analysis)
+        tutor_response = self._extract_patient_response(result["tutor_response"])
+
         # Enhance metadata with case-specific analysis
         reasoning_metadata = result["reasoning_metadata"]
         reasoning_metadata.update(
@@ -108,9 +120,9 @@ class ReasoningEngine:
                 previous_interactions=interactions
             )
         )
-        
+
         return {
-            "tutor_response": result["tutor_response"],
+            "tutor_response": tutor_response,
             "reasoning_metadata": reasoning_metadata
         }
     
@@ -188,52 +200,194 @@ class ReasoningEngine:
     ) -> Dict[str, Any]:
         """
         Evaluate a student's overall performance in a session.
-        
+
         Args:
             session_id: Session UUID
-            
+
         Returns:
-            Evaluation summary
+            Evaluation with scores, feedback, and summary
         """
         # Load session data
         session = await supabase_service.get_session(session_id)
         if not session:
             raise Exception("Session not found")
-        
+
         case = await supabase_service.get_case(session.case_id)
         interactions = await supabase_service.get_session_history(session_id)
-        
+
         # Collect all red flags and diagnoses mentioned
         all_red_flags = set()
         all_diagnoses = set()
-        
+
         for interaction in interactions:
             metadata = interaction.reasoning_metadata or {}
             all_red_flags.update(metadata.get("identified_red_flags", []))
             all_diagnoses.update(metadata.get("considered_diagnoses", []))
-        
+
         # Calculate coverage
         total_red_flags = len(case.red_flags) if case else 0
         identified_red_flags = len(all_red_flags)
-        
+        missed_red_flags = [flag for flag in (case.red_flags or []) if flag not in all_red_flags]
+
+        # Analyze actual conversation for feedback
+        strengths = []
+        areas_for_improvement = []
+
+        # Analyze student inputs for quality indicators
+        student_inputs = [i.student_input.lower() for i in interactions if i.student_input]
+
+        # Check for good practices
+        asked_about_timeline = any("when" in q or "how long" in q or "started" in q for q in student_inputs)
+        if asked_about_timeline:
+            strengths.append("Asked about symptom timeline and duration")
+
+        asked_about_severity = any("bad" in q or "severe" in q or "worse" in q or "worse" in q for q in student_inputs)
+        if asked_about_severity:
+            strengths.append("Assessed severity and progression of symptoms")
+
+        asked_about_past = any("history" in q or "before" in q or "previously" in q for q in student_inputs)
+        if asked_about_past:
+            strengths.append("Explored relevant medical history")
+
+        asked_about_meds = any("medication" in q or "taking" in q or "drug" in q for q in student_inputs)
+        if asked_about_meds:
+            strengths.append("Asked about current medications")
+
+        asked_open_ended = any("?" in q and len(q.split()) < 4 for q in student_inputs)
+        if asked_open_ended:
+            strengths.append("Used effective questioning technique")
+
+        if not strengths:
+            strengths = ["Attempted systematic history gathering"]
+
+        # Identify weaknesses from actual conversation
+        if identified_red_flags < total_red_flags:
+            missed_list = ", ".join(missed_red_flags[:2])
+            areas_for_improvement.append(f"Missed critical red flags: {missed_list}")
+
+        if not asked_about_timeline:
+            areas_for_improvement.append("Didn't fully explore when symptoms started and how they've progressed")
+
+        if not asked_about_severity:
+            areas_for_improvement.append("Could have assessed symptom severity more thoroughly")
+
+        if len(interactions) < 4:
+            areas_for_improvement.append("Ask more follow-up questions to gather comprehensive history")
+
+        if not all_diagnoses:
+            areas_for_improvement.append("Didn't explicitly consider or mention differential diagnoses")
+
+        if not areas_for_improvement:
+            areas_for_improvement = ["Continue refining your clinical interview technique"]
+
+        # Extract the correct diagnosis from the case
+        sample_diagnosis = "Meningitis"  # Default
+        if case and case.differential_diagnoses:
+            diagnoses = case.differential_diagnoses
+            if isinstance(diagnoses, dict):
+                # Get the primary diagnosis (usually the first key-value pair)
+                for key, value in diagnoses.items():
+                    # Skip generic headers like "Must Rule Out", use actual diagnosis
+                    if key.lower() not in ["must rule out", "always consider", "consider", "rule out"]:
+                        if isinstance(value, dict):
+                            # If value is a dict, try to get diagnosis name
+                            sample_diagnosis = value.get("name", key).title()
+                        else:
+                            sample_diagnosis = str(value).strip().title()
+                        break
+            else:
+                sample_diagnosis = str(diagnoses).strip().title()
+
+        overall_assessment = f"You identified {identified_red_flags}/{total_red_flags} critical red flags. " \
+                            f"The correct diagnosis is: {sample_diagnosis}. " \
+                            f"Continue practicing systematic clinical reasoning."
+
+        duration = self._calculate_duration(interactions)
+
         return {
-            "total_interactions": len(interactions),
-            "red_flags_identified": list(all_red_flags),
-            "red_flags_coverage": f"{identified_red_flags}/{total_red_flags}",
-            "diagnoses_considered": list(all_diagnoses),
-            "session_duration_minutes": self._calculate_duration(interactions)
+            "evaluation": {
+                "overall_assessment": overall_assessment,
+                "strengths": strengths,
+                "areas_for_improvement": areas_for_improvement,
+                "key_findings": [f"Red flags identified: {identified_red_flags}/{total_red_flags}"],
+                "missed_red_flags": missed_red_flags,
+                "sample_diagnosis": sample_diagnosis,
+                "full_differential_diagnoses": case.differential_diagnoses if case else {}
+            },
+            "summary": {
+                "total_interactions": len(interactions),
+                "duration_minutes": duration,
+                "questions_asked": len(interactions),
+                "red_flags_coverage": f"{identified_red_flags}/{total_red_flags}",
+                "diagnoses_considered": list(all_diagnoses) if all_diagnoses else ["None documented"]
+            }
         }
     
     def _calculate_duration(self, interactions: List[Any]) -> int:
         """Calculate session duration in minutes."""
         if not interactions or len(interactions) < 2:
             return 0
-        
+
         start_time = interactions[0].timestamp
         end_time = interactions[-1].timestamp
-        
+
         duration = (end_time - start_time).total_seconds() / 60
         return int(duration)
+
+    def _extract_patient_response(self, response: str) -> str:
+        """
+        Extract ONLY patient dialogue from K2's response.
+        Stop at ANY meta-commentary or analysis.
+        """
+        import re
+
+        # Remove everything after <think> tags
+        response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
+        response = response.strip()
+
+        # List of all patterns that indicate analysis/meta-commentary (stop here)
+        stop_patterns = [
+            r'\n\n',  # Double newline = likely new section
+            r'(?:The (question|user|patient|doctor)|Analyzing|Based on|According to)',
+            r'(?:This (seems|means|indicates)|That (means|suggests))',
+            r'(?:As a patient|The patient (would|is|might))',
+            r'(?:In response to|Response:|Draft:|Note:)',
+            r'(?:\*\*|###|---)',  # Markdown markers
+            r'(?:seems like|might be|could be)',
+            r'(?:Clinical|Medical|Patient Information|Chief Complaint)',
+        ]
+
+        # Find where to cut off
+        cutoff_pos = len(response)
+        for pattern in stop_patterns:
+            match = re.search(pattern, response, re.IGNORECASE)
+            if match:
+                cutoff_pos = min(cutoff_pos, match.start())
+
+        # Take only valid patient dialogue
+        patient_text = response[:cutoff_pos].strip()
+
+        # If too long, take only first 1-3 sentences (natural patient response)
+        sentences = re.split(r'(?<=[.!?])\s+', patient_text)
+
+        # Keep only first 3 meaningful sentences
+        result = []
+        for sent in sentences[:3]:
+            sent = sent.strip()
+            if not sent or len(sent) < 3:
+                continue
+            # Skip if it's clearly not patient dialogue
+            if any(marker in sent.lower() for marker in ['year-old', 'presents', 'chief complaint', 'differential']):
+                continue
+            result.append(sent)
+
+        final_response = ' '.join(result).strip()
+
+        # Ensure we have something
+        if not final_response:
+            final_response = "Um, I'm not sure..."
+
+        return final_response
 
 
 # Global reasoning engine instance

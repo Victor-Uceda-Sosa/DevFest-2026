@@ -35,6 +35,9 @@ async def interact(
     Returns:
         InteractionResponse with tutor's Socratic response
     """
+    import time
+    start_time = time.time()
+
     print("\n" + "="*80)
     print("🎙️  AUDIO INTERACTION REQUEST RECEIVED")
     print(f"Session ID: {session_id}")
@@ -118,6 +121,8 @@ async def interact(
                     )
                 print(f"   ✓ Transcription successful")
                 print(f"   📝 Transcript: {student_input_text[:100]}..." if len(student_input_text) > 100 else f"   📝 Transcript: {student_input_text}")
+                elapsed = time.time() - start_time
+                print(f"   ⏱️  Time elapsed: {elapsed:.2f}s")
             except HTTPException:
                 raise
             except Exception as e:
@@ -166,7 +171,10 @@ async def interact(
             tutor_response = response_data["tutor_response"]
             reasoning_metadata = response_data["reasoning_metadata"]
             print(f"   ✓ K2 response generated")
-            print(f"   📝 Response: {tutor_response[:100]}..." if len(tutor_response) > 100 else f"   📝 Response: {tutor_response}")
+            print(f"   📝 Full Response Text: '{tutor_response}'")
+            print(f"   📊 Response length: {len(tutor_response)} chars")
+            elapsed = time.time() - start_time
+            print(f"   ⏱️  Time elapsed: {elapsed:.2f}s")
             
         except Exception as e:
             print(f"   ✗ K2 reasoning error: {str(e)}")
@@ -186,22 +194,25 @@ async def interact(
             # Clean the response text for TTS
             # Remove XML tags like <think>...</think> that K2 includes
             clean_text = tutor_response
+            print(f"   INPUT to TTS cleaning: '{clean_text}'")
             print(f"   Original text length: {len(clean_text)} chars")
-            
+
             # Remove <think> blocks (K2 reasoning tags)
             clean_text = re.sub(r'<think>.*?</think>', '', clean_text, flags=re.DOTALL)
-            
+            print(f"   After removing <think>: '{clean_text}'")
+
             # Remove any other XML-like tags
             clean_text = re.sub(r'<[^>]+>', '', clean_text)
-            
+            print(f"   After removing XML: '{clean_text}'")
+
             # Trim whitespace and normalize
             clean_text = clean_text.strip()
-            
+
             # Replace multiple spaces/newlines with single space
             clean_text = re.sub(r'\s+', ' ', clean_text)
-            
+
+            print(f"   FINAL TEXT for TTS: '{clean_text}'")
             print(f"   Cleaned text length: {len(clean_text)} chars")
-            print(f"   Cleaned text preview: {clean_text[:200]}..." if len(clean_text) > 200 else f"   Cleaned text: {clean_text}")
             
             if not clean_text:
                 print(f"   ⚠️  Warning: Cleaned text is empty, skipping TTS")
@@ -219,21 +230,18 @@ async def interact(
             
             if response_audio_bytes:
                 print(f"   ✓ TTS audio generated: {len(response_audio_bytes)} bytes")
-                # Upload response audio to Supabase storage
-                print("💾 Step 9: Uploading response audio to storage...")
-                response_audio_filename = f"tutor_{uuid.uuid4()}.mp3"
-                response_audio_url = await supabase_service.upload_audio(
-                    file_data=response_audio_bytes,
-                    session_id=session_uuid,
-                    filename=response_audio_filename,
-                    content_type="audio/mpeg"
-                )
-                print(f"   ✓ Response audio uploaded: {response_audio_url}")
-            else:
-                print(f"   ⚠️  Warning: TTS audio generation returned empty bytes")
+                # Return audio as base64 data URL (no Supabase upload needed)
+                import base64
+                audio_base64 = base64.b64encode(response_audio_bytes).decode('utf-8')
+                response_audio_url = f"data:audio/mpeg;base64,{audio_base64}"
+                print(f"   ✓ Audio encoded as data URL")
+            # TTS optional - text response is still returned
         except Exception as e:
-            print(f"   ⚠️  Warning: Failed to generate/upload response audio: {str(e)}")
-            # Continue without audio - text response is still returned
+            # TTS optional - text response is still returned
+            print(f"   ❌ TTS/Upload failed: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            response_audio_url = None
         
         # Save interaction to database
         print("💾 Step 10: Saving interaction to database...")
@@ -266,6 +274,8 @@ async def interact(
         print(f"   Display response preview: {display_response[:150]}..." if len(display_response) > 150 else f"   Display response: {display_response}")
         
         # Return response
+        elapsed_total = time.time() - start_time
+        print(f"⏱️  TOTAL TIME: {elapsed_total:.2f}s")
         print("✅ Step 12: Returning response to client")
         print("="*80 + "\n")
         return InteractionResponse(
@@ -300,12 +310,12 @@ async def interact_stream(
     """
     Stream audio response chunks to client as they're generated.
     Provides lower latency by streaming TTS audio while response is generated.
-    
+
     Args:
         session_id: Session UUID (form field)
         audio_file: Optional audio file upload
         text_input: Optional text input (if no audio)
-        
+
     Returns:
         StreamingResponse with audio/mpeg content
     """
@@ -313,59 +323,79 @@ async def interact_stream(
     print("🎙️  STREAMING AUDIO INTERACTION REQUEST RECEIVED")
     print(f"Session ID: {session_id}")
     print("="*80)
-    
-    async def stream_audio():
+
+    # READ AND TRANSCRIBE AUDIO BEFORE STREAMING (CRITICAL!)
+    # This must happen in the outer function, not in the generator
+    audio_data = None
+    student_input_text = ""
+    session_uuid = None
+
+    try:
+        # Validate session ID
         try:
-            # Validate session ID
-            try:
-                session_uuid = UUID(session_id)
-            except ValueError:
-                print(f"   ✗ Invalid session ID format: {session_id}")
-                return
-            
-            # Check if session exists
-            session = await supabase_service.get_session(session_uuid)
-            if not session:
-                print(f"   ✗ Session not found: {session_uuid}")
-                return
-            
-            # Get student input
-            student_input_text = ""
-            
-            if audio_file:
-                print(f"🎵 Processing audio file...")
-                validate_audio_file(audio_file)
-                audio_data = await audio_file.read()
-                
-                # Transcribe audio
-                print("🎤 Transcribing audio...")
-                transcription_result = await elevenlabs_service.transcribe_audio(audio_data)
-                if not transcription_result.get("success"):
-                    print(f"   ✗ Transcription failed")
-                    return
-                
-                student_input_text = transcription_result.get("transcript", "")
-                if not student_input_text or student_input_text.strip() == "":
-                    print(f"   ✗ No speech detected")
-                    return
-                
-            elif text_input:
-                validate_text_input(text_input)
-                student_input_text = text_input
-            else:
-                print("   ✗ No input provided")
-                return
-            
+            session_uuid = UUID(session_id)
+            print(f"📋 Validating session ID: {session_uuid}")
+        except ValueError:
+            print(f"   ✗ Invalid session ID format: {session_id}")
+            raise HTTPException(status_code=400, detail="Invalid session ID format")
+
+        # Check if session exists
+        session = await supabase_service.get_session(session_uuid)
+        if not session:
+            print(f"   ✗ Session not found: {session_uuid}")
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        print(f"✓ Session found: {session.case_id}")
+
+        # Get student input - READ FILE HERE, BEFORE STREAMING
+        if audio_file:
+            print(f"🎵 Processing audio file...")
+            validate_audio_file(audio_file)
+            audio_data = await audio_file.read()
+            print(f"   ✓ Audio data read: {len(audio_data)} bytes")
+
+            # Transcribe audio
+            print("🎤 Transcribing audio...")
+            transcription_result = await elevenlabs_service.transcribe_audio(audio_data)
+            if not transcription_result.get("success"):
+                error_msg = transcription_result.get('error', 'Unknown error')
+                print(f"   ✗ Transcription failed: {error_msg}")
+                raise HTTPException(status_code=500, detail=f"Transcription failed: {error_msg}")
+
+            student_input_text = transcription_result.get("transcript", "")
+            if not student_input_text or student_input_text.strip() == "":
+                print(f"   ✗ No speech detected in audio")
+                raise HTTPException(status_code=400, detail="No speech detected in audio. Please try again.")
+            print(f"   ✓ Transcription successful: {student_input_text[:100]}")
+
+        elif text_input:
+            validate_text_input(text_input)
+            student_input_text = text_input
+            print(f"✍️  Using text input: {student_input_text[:100]}")
+        else:
+            print("   ✗ No input provided")
+            raise HTTPException(status_code=400, detail="Either audio_file or text_input must be provided")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"   ✗ Error processing input: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+    # NOW START STREAMING THE RESPONSE
+    async def stream_response():
+        try:
             # Generate tutor response
             print("🤖 Generating tutor response...")
             response_data = await reasoning_engine.generate_response(
                 session_id=session_uuid,
                 student_input=student_input_text
             )
-            
+
             tutor_response = response_data["tutor_response"]
             reasoning_metadata = response_data["reasoning_metadata"]
-            
+            print(f"   ✓ K2 response generated")
+
             # Clean response for TTS
             import re
             clean_text = tutor_response
@@ -373,19 +403,19 @@ async def interact_stream(
             clean_text = re.sub(r'<[^>]+>', '', clean_text)
             clean_text = clean_text.strip()
             clean_text = re.sub(r'\s+', ' ', clean_text)
-            
+
             if not clean_text:
                 print(f"   ⚠️  Cleaned text is empty")
                 return
-            
+
             if len(clean_text) > 5000:
                 clean_text = clean_text[:4997] + "..."
-            
+
             # Stream TTS audio chunks
             print("🔊 Streaming TTS audio...")
             from app.config import get_settings
             settings = get_settings()
-            
+
             chunk_count = 0
             async for audio_chunk in elevenlabs_service.generate_voice_stream(
                 text=clean_text,
@@ -393,11 +423,11 @@ async def interact_stream(
             ):
                 if audio_chunk:
                     chunk_count += 1
-                    print(f"   ✓ Sent chunk {chunk_count}")
+                    print(f"   ✓ Sent chunk {chunk_count}: {len(audio_chunk)} bytes")
                     yield audio_chunk
-            
+
             print(f"   ✓ Streaming complete ({chunk_count} chunks)")
-            
+
             # Save interaction asynchronously (don't wait for it)
             try:
                 await supabase_service.save_interaction(
@@ -410,14 +440,14 @@ async def interact_stream(
                 )
             except Exception as e:
                 print(f"   ⚠️  Failed to save interaction: {str(e)}")
-            
+
         except Exception as e:
-            print(f"\n❌ ERROR in stream_audio:")
+            print(f"\n❌ ERROR in stream_response:")
             print(f"   {type(e).__name__}: {str(e)}")
             import traceback
             traceback.print_exc()
-    
+
     return StreamingResponse(
-        stream_audio(),
+        stream_response(),
         media_type="audio/mpeg"
     )

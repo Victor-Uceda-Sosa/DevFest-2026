@@ -1,3 +1,14 @@
+/**
+ * Scheduling Component
+ * TODO: Integrate Dedalus API for schedule management
+ * - Replace local state with API calls to Dedalus
+ * - Fetch events from: POST /api/dedalus/events/list
+ * - Create events: POST /api/dedalus/events/create
+ * - Update events: PUT /api/dedalus/events/{id}
+ * - Delete events: DELETE /api/dedalus/events/{id}
+ * - Get recommendations: GET /api/dedalus/recommendations
+ */
+
 import React, { useState } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -8,6 +19,8 @@ import { Calendar, Clock, Plus, Trash2, Edit, BookOpen, Stethoscope, GraduationC
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+// TODO: Import Dedalus API service when ready
+// import dedalusApi from '../services/dedalusApi';
 
 interface Event {
   id: number;
@@ -19,9 +32,9 @@ interface Event {
 }
 
 const eventTypeConfig = {
-  study: { color: 'bg-blue-900/20 text-blue-700', icon: BookOpen },
-  rotation: { color: 'bg-green-100 text-green-700', icon: Stethoscope },
-  exam: { color: 'bg-red-100 text-red-700', icon: GraduationCap },
+  study: { color: 'bg-blue-900/40 text-blue-400', icon: BookOpen },
+  rotation: { color: 'bg-emerald-900/40 text-emerald-400', icon: Stethoscope },
+  exam: { color: 'bg-cyan-900/40 text-cyan-400', icon: GraduationCap },
   other: { color: 'bg-slate-800/50 text-gray-300', icon: AlertCircle },
 };
 
@@ -77,32 +90,41 @@ export function Scheduling() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSaveEvent = () => {
+  const handleSaveEvent = async () => {
     if (!formData.title || !formData.date || !formData.time) return;
 
-    if (editingEvent) {
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === editingEvent.id ? { ...formData, id: event.id } : event
-        )
-      );
-    } else {
-      const newEvent: Event = {
-        ...formData,
-        id: Date.now(),
-      };
-      setEvents((prev) => [...prev, newEvent]);
-    }
+    try {
+      if (editingEvent) {
+        // TODO: Call Dedalus API to update event
+        // await dedalusApi.updateEvent(editingEvent.id, formData);
+        setEvents((prev) =>
+          prev.map((event) =>
+            event.id === editingEvent.id ? { ...formData, id: event.id } : event
+          )
+        );
+      } else {
+        // TODO: Call Dedalus API to create event
+        // const response = await dedalusApi.createEvent(formData);
+        const newEvent: Event = {
+          ...formData,
+          id: Date.now(),
+        };
+        setEvents((prev) => [...prev, newEvent]);
+      }
 
-    setIsDialogOpen(false);
-    setEditingEvent(null);
-    setFormData({
-      title: '',
-      date: '',
-      time: '',
-      type: 'study',
-      description: '',
-    });
+      setIsDialogOpen(false);
+      setEditingEvent(null);
+      setFormData({
+        title: '',
+        date: '',
+        time: '',
+        type: 'study',
+        description: '',
+      });
+    } catch (error) {
+      console.error('Error saving event:', error);
+      // TODO: Show error message to user
+    }
   };
 
   const handleEditEvent = (event: Event) => {
@@ -117,8 +139,15 @@ export function Scheduling() {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteEvent = (id: number) => {
-    setEvents((prev) => prev.filter((event) => event.id !== id));
+  const handleDeleteEvent = async (id: number) => {
+    try {
+      // TODO: Call Dedalus API to delete event
+      // await dedalusApi.deleteEvent(id);
+      setEvents((prev) => prev.filter((event) => event.id !== id));
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      // TODO: Show error message to user
+    }
   };
 
   const openNewEventDialog = () => {
@@ -171,7 +200,7 @@ export function Scheduling() {
           <DialogTrigger asChild>
             <Button
               onClick={openNewEventDialog}
-              className="bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800"
+              className="bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800"
             >
               <Plus className="w-4 h-4 mr-2" />
               Add Event
@@ -237,7 +266,7 @@ export function Scheduling() {
               </div>
               <Button
                 onClick={handleSaveEvent}
-                className="w-full bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800"
+                className="w-full bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800"
               >
                 {editingEvent ? 'Update Event' : 'Add Event'}
               </Button>
@@ -248,42 +277,42 @@ export function Scheduling() {
 
       {/* AI Scheduling Tips */}
       <div className="grid md:grid-cols-3 gap-4">
-        <Card className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border-2 border-blue-200">
+        <Card className="p-4 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-2 border-blue-500/30">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-blue-600 flex-shrink-0">
               <Clock className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-blue-900 mb-1">Optimal Study Time</h4>
-              <p className="text-sm text-blue-800">
+              <h4 className="font-semibold text-blue-400 mb-1">Optimal Study Time</h4>
+              <p className="text-sm text-blue-300">
                 Schedule intensive study sessions during your peak performance hours, typically morning or early afternoon.
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-gradient-to-r from-green-50 to-green-100 border-2 border-green-200">
+        <Card className="p-4 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-2 border-emerald-500/30">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-green-600 flex-shrink-0">
               <Calendar className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-green-900 mb-1">Spaced Repetition</h4>
-              <p className="text-sm text-green-800">
+              <h4 className="font-semibold text-emerald-400 mb-1">Spaced Repetition</h4>
+              <p className="text-sm text-emerald-300">
                 Review material at increasing intervals: 1 day, 3 days, 1 week, and 2 weeks for better retention.
               </p>
             </div>
           </div>
         </Card>
 
-        <Card className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 border border-blue-500/30">
+        <Card className="p-4 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border-2 border-cyan-500/30">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-purple-600 flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h4 className="font-semibold text-purple-900 mb-1">Break Strategy</h4>
-              <p className="text-sm text-purple-800">
+              <h4 className="font-semibold text-cyan-400 mb-1">Break Strategy</h4>
+              <p className="text-sm text-cyan-300">
                 Use the Pomodoro Technique: 25-minute focused study sessions with 5-minute breaks in between.
               </p>
             </div>
@@ -334,8 +363,8 @@ export function Scheduling() {
                     key={index}
                     className={`min-h-[120px] p-2 rounded-lg border-2 ${
                       isToday
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-slate-700/50 bg-white'
+                        ? 'border-orange-500 bg-orange-900/30'
+                        : 'border-slate-700/50 bg-slate-800/40'
                     }`}
                   >
                     <div className="text-center mb-2">
@@ -439,10 +468,10 @@ export function Scheduling() {
             </div>
           </Card>
 
-          <Card className="p-4 bg-orange-50 border-2 border-orange-100">
+          <Card className="p-4 bg-orange-900/30 border-2 border-orange-500/30">
             <div className="flex gap-2">
-              <Calendar className="w-5 h-5 text-orange-600 flex-shrink-0" />
-              <div className="text-sm text-orange-900">
+              <Calendar className="w-5 h-5 text-orange-400 flex-shrink-0" />
+              <div className="text-sm text-orange-300">
                 <p className="font-semibold mb-1">Stay Organized!</p>
                 <p>Schedule regular study blocks and review sessions. Consistency is key to MCAT success.</p>
               </div>

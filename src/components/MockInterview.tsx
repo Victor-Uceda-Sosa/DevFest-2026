@@ -4,7 +4,10 @@ import { Button } from './ui/button';
 import { User, Bot, Play, RotateCcw, CheckCircle2, AlertCircle, Sparkles, Square, Loader2, Mic, Send } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { AudioRecorder, formatRecordingTime } from '../utils/audioRecorder';
+import { MedicalImages } from './MedicalImages';
 import interviewApi from '../services/interviewApi';
+import dedalusApi from '../services/dedalusApi';
+import { demoCases } from '../data/demoMedicalCases';
 import { CasePublic, SessionStartResponse, SessionCompleteResponse } from '../types/api';
 
 interface Message {
@@ -37,6 +40,12 @@ export function MockInterview() {
   // Error state
   const [error, setError] = useState<string | null>(null);
 
+  // Dedalus literature generation state
+  const [generatingFromLiterature, setGeneratingFromLiterature] = useState(false);
+  const [medicalCondition, setMedicalCondition] = useState('');
+  const [caseDifficulty, setCaseDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+  const [showLiteratureGenerator, setShowLiteratureGenerator] = useState(false);
+
   // Load cases on component mount
   useEffect(() => {
     loadCases();
@@ -46,13 +55,64 @@ export function MockInterview() {
     try {
       setLoadingCases(true);
       setError(null);
-      const fetchedCases = await interviewApi.getCases();
-      setCases(fetchedCases);
+      try {
+        const fetchedCases = await interviewApi.getCases();
+        // Merge API cases with demo cases (demo cases have medical images for Dedalus multimodality)
+        const mergedCases = [...demoCases, ...fetchedCases.filter((apiCase: CasePublic) =>
+          !demoCases.find(demoCase => demoCase.id === apiCase.id)
+        )];
+        setCases(mergedCases);
+      } catch (apiErr) {
+        console.warn('API cases unavailable, using demo cases with medical images:', apiErr);
+        // Fall back to demo cases with medical images
+        setCases(demoCases);
+      }
     } catch (err: any) {
       console.error('Error loading cases:', err);
       setError(err.message || 'Failed to load clinical cases. Please refresh the page.');
     } finally {
       setLoadingCases(false);
+    }
+  };
+
+  // Generate case from medical literature using Dedalus
+  const generateCaseFromLiterature = async () => {
+    if (!medicalCondition.trim()) {
+      setError('Please enter a medical condition');
+      return;
+    }
+
+    try {
+      setGeneratingFromLiterature(true);
+      setError(null);
+      console.log(`🔍 Dedalus: Generating ${caseDifficulty} case for ${medicalCondition} from medical literature`);
+
+      const response = await dedalusApi.generateCaseFromLiterature({
+        medical_condition: medicalCondition,
+        difficulty: caseDifficulty,
+      });
+
+      if (response.case) {
+        // Convert to CasePublic format and add to cases
+        const generatedCase: CasePublic = {
+          id: `dedalus-${Date.now()}`,
+          title: response.case.title,
+          chief_complaint: response.case.chief_complaint,
+          learning_objectives: response.case.learning_objectives,
+        };
+
+        setCases((prev) => [generatedCase, ...prev]);
+        setSelectedCase(generatedCase);
+        setShowLiteratureGenerator(false);
+        setMedicalCondition('');
+        console.log(`✅ Generated case from literature: ${response.case.title}`);
+        console.log(`📚 Literature reference: ${response.literature_reference}`);
+      }
+    } catch (err: any) {
+      console.error('Error generating case from literature:', err);
+      setError(`Failed to generate case: ${err.message}`);
+    } finally {
+      setGeneratingFromLiterature(false);
     }
   };
 
@@ -70,13 +130,20 @@ export function MockInterview() {
 
       setSelectedCase(caseData);
       setSessionId(response.session_id);
-      
-      // Display initial greeting from patient
+
+      // Display initial greeting from patient with audio
       setMessages([{
         role: 'patient',
         content: response.initial_greeting,
+        audioUrl: response.greeting_audio_url || null,
       }]);
-      
+
+      // Play greeting audio if available
+      if (response.greeting_audio_url) {
+        console.log('🔊 Playing initial greeting audio...');
+        setTimeout(() => playAudioResponse(response.greeting_audio_url), 500);
+      }
+
       setIsComplete(false);
       setFeedback(null);
     } catch (err: any) {
@@ -124,7 +191,7 @@ export function MockInterview() {
     }
 
     try {
-      console.log('\n🚀 ============ SENDING AUDIO TO BACKEND (STREAMING) ============');
+      console.log('\n🚀 ============ SENDING AUDIO TO BACKEND ============');
       console.log('📊 Audio Blob Info:');
       console.log('   - Size:', audioBlob.size, 'bytes');
       console.log('   - Type:', audioBlob.type);
@@ -135,21 +202,65 @@ export function MockInterview() {
       setError(null);
 
       const startTime = Date.now();
-      console.log('📤 Streaming POST request to /api/reasoning/interact-stream...');
+      console.log('📤 POST request to /api/reasoning/interact...');
 
-      // Stream audio chunks and play them as they arrive
-      await interviewApi.sendInteractionStream(
+      // Add student message immediately (for live transcript effect)
+      let studentInputText = '';
+
+      // Send audio and get response
+      const response = await interviewApi.sendInteraction(
         sessionId,
-        { audio: audioBlob },
-        (chunk: Uint8Array) => {
-          console.log(`🎵 Received chunk: ${chunk.length} bytes`);
-          // Play audio chunk immediately
-          playAudioChunk(chunk);
-        }
+        { audio: audioBlob }
       );
 
+      studentInputText = response.student_input;
+      console.log('✅ Response received:');
+      console.log('   📝 Student input (transcript):', studentInputText);
+      console.log('   🤖 Tutor response:', response.tutor_response.substring(0, 100) + '...');
+      console.log('   🔊 Audio URL:', response.audio_url);
+
+      // Add student message immediately
+      setMessages(prev => [...prev, {
+        role: 'student',
+        content: studentInputText,
+      }]);
+
+      // Add patient message with empty content (will stream it in)
+      const patientMessageIndex = messages.length + 1;
+      setMessages(prev => [...prev, {
+        role: 'patient',
+        content: '',
+        audioUrl: response.audio_url || null,
+      }]);
+
+      // Stream the response character by character (typing effect)
+      const fullResponse = response.tutor_response;
+      let charIndex = 0;
+      const streamChar = () => {
+        if (charIndex < fullResponse.length) {
+          charIndex++;
+          setMessages(prev => {
+            const updated = [...prev];
+            if (updated[patientMessageIndex]) {
+              updated[patientMessageIndex].content = fullResponse.substring(0, charIndex);
+            }
+            return updated;
+          });
+          // Adjust speed based on text length (faster for short responses)
+          const delay = fullResponse.length > 100 ? 10 : 15;
+          setTimeout(streamChar, delay);
+        } else if (response.audio_url) {
+          // Once text is fully streamed, play audio
+          console.log('🔊 Playing audio from URL:', response.audio_url);
+          playAudioResponse(response.audio_url);
+        }
+      };
+
+      // Start streaming text
+      streamChar();
+
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`✅ Streaming complete in ${duration}s`);
+      console.log(`✅ Complete in ${duration}s`);
 
       // Reset recording state
       setAudioBlob(null);
@@ -199,6 +310,8 @@ export function MockInterview() {
   // Play audio response from URL
   const playAudioResponse = (audioUrl: string) => {
     try {
+      console.log('🎵 Creating audio element for URL:', audioUrl);
+
       // Stop current audio if playing
       if (currentAudio) {
         currentAudio.pause();
@@ -206,16 +319,37 @@ export function MockInterview() {
       }
 
       const audio = new Audio(audioUrl);
-      audio.play();
-      setCurrentAudio(audio);
+      console.log('🎵 Audio element created');
 
-      audio.onended = () => setCurrentAudio(null);
       audio.onerror = (e) => {
-        console.error('Error playing audio:', e);
+        console.error('❌ Audio playback error:', e);
+        console.error('Audio error details:', (audio as any).error);
+      };
+
+      audio.oncanplay = () => {
+        console.log('✅ Audio can play, duration:', audio.duration, 'seconds');
+      };
+
+      const playPromise = audio.play();
+      console.log('🎵 Calling play()...');
+
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✅ Audio playback started');
+            setCurrentAudio(audio);
+          })
+          .catch((err) => {
+            console.error('❌ Play failed:', err.name, err.message);
+          });
+      }
+
+      audio.onended = () => {
+        console.log('🎵 Audio playback ended');
         setCurrentAudio(null);
       };
     } catch (err) {
-      console.error('Failed to play audio:', err);
+      console.error('❌ Failed to create audio element:', err);
     }
   };
 
@@ -229,7 +363,24 @@ export function MockInterview() {
       setIsComplete(true);
 
       const result = await interviewApi.completeSession(sessionId);
+      console.log('📋 Feedback received:', result);
       setFeedback(result);
+
+      // Save session data for flashcard personalization
+      const sessionData = {
+        sessionId,
+        caseId: selectedCase?.id,
+        timestamp: new Date().toISOString(),
+        feedback: result,
+        studentInputs: messages.filter(m => m.role === 'student').map(m => m.content),
+        patientResponses: messages.filter(m => m.role === 'patient').map(m => m.content),
+      };
+
+      // Store in localStorage for flashcard generation
+      const recentSessions = JSON.parse(localStorage.getItem('recentSessions') || '[]');
+      recentSessions.push(sessionData);
+      // Keep only last 5 sessions
+      localStorage.setItem('recentSessions', JSON.stringify(recentSessions.slice(-5)));
     } catch (err: any) {
       console.error('Error completing session:', err);
       setError(err.message || 'Failed to complete interview. Please try again.');
@@ -291,9 +442,80 @@ export function MockInterview() {
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-white mb-2">AI-Powered Interview Platform</h3>
               <p className="text-gray-400 mb-4">
-                Practice with AI patients powered by K2 clinical reasoning and ElevenLabs voice synthesis.
+                Practice with AI patients powered by Praxis clinical reasoning and ElevenLabs voice synthesis.
                 Speak naturally and receive intelligent Socratic responses to guide your learning.
               </p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Dedalus Literature Generator */}
+        <Card className="p-6 bg-gradient-to-r from-purple-900/30 to-blue-900/30 border border-purple-500/30">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-lg bg-purple-500/20 flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-white mb-2">Generate Case from Medical Literature</h3>
+              <p className="text-sm text-gray-400 mb-4">
+                Use Dedalus to search medical literature and generate realistic clinical cases based on actual documented cases.
+              </p>
+              <Button
+                onClick={() => setShowLiteratureGenerator(!showLiteratureGenerator)}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                {showLiteratureGenerator ? 'Hide' : 'Generate from Literature'}
+              </Button>
+
+              {showLiteratureGenerator && (
+                <div className="mt-4 space-y-4 p-4 rounded-lg bg-black/20 border border-purple-500/20">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                      Medical Condition
+                    </label>
+                    <input
+                      type="text"
+                      value={medicalCondition}
+                      onChange={(e) => setMedicalCondition(e.target.value)}
+                      placeholder="e.g., Acute Myocardial Infarction, Sepsis, Stroke"
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">
+                      Difficulty Level
+                    </label>
+                    <select
+                      value={caseDifficulty}
+                      onChange={(e) => setCaseDifficulty(e.target.value as 'easy' | 'medium' | 'hard')}
+                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="easy">Easy (Clear diagnosis)</option>
+                      <option value="medium">Medium (Some complexity)</option>
+                      <option value="hard">Hard (Diagnostic challenge)</option>
+                    </select>
+                  </div>
+
+                  <Button
+                    onClick={generateCaseFromLiterature}
+                    disabled={generatingFromLiterature || !medicalCondition.trim()}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  >
+                    {generatingFromLiterature ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Generating from Literature...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Generate Case
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </Card>
@@ -364,6 +586,14 @@ export function MockInterview() {
           Change Case
         </Button>
       </div>
+
+      {/* Medical Images - Multimodal Integration with Dedalus */}
+      {selectedCase.medical_images && selectedCase.medical_images.length > 0 && (
+        <MedicalImages
+          images={selectedCase.medical_images}
+          title="Medical Imaging & Findings"
+        />
+      )}
 
       {error && (
         <Card className="p-4 bg-red-900/20 border border-red-500/30">
@@ -526,7 +756,7 @@ export function MockInterview() {
           {feedbackLoading && (
             <div className="flex flex-col items-center justify-center py-12">
               <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4" />
-              <p className="text-gray-300 font-medium">Analyzing your interview with K2 AI...</p>
+              <p className="text-gray-300 font-medium">Analyzing your interview with Praxis AI...</p>
               <p className="text-sm text-gray-500 mt-1">Reviewing your clinical technique and reasoning</p>
             </div>
           )}
@@ -535,7 +765,52 @@ export function MockInterview() {
             <div className="space-y-4">
               <div className="p-4 bg-slate-800/50 rounded-lg border border-blue-500/30">
                 <h4 className="font-semibold text-white mb-2">Overall Assessment</h4>
-                <p className="text-gray-300">{feedback.evaluation.overall_assessment}</p>
+                <p className="text-gray-300">{feedback.evaluation?.overall_assessment || "Assessment pending..."}</p>
+              </div>
+
+              <div className="p-4 bg-gradient-to-r from-emerald-900/40 to-teal-900/40 rounded-lg border border-emerald-500/50">
+                <h4 className="font-semibold text-emerald-400 mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5" />
+                  Correct Answer
+                </h4>
+                <div className="space-y-3 text-gray-200">
+                  <div>
+                    <p className="text-xs text-emerald-300 uppercase tracking-wide font-semibold">Primary Diagnosis</p>
+                    <p className="text-lg font-bold text-emerald-100">
+                      {feedback.evaluation?.sample_diagnosis || "Loading diagnosis..."}
+                    </p>
+                  </div>
+
+                  {feedback.evaluation?.full_differential_diagnoses && Object.keys(feedback.evaluation.full_differential_diagnoses).length > 0 && (
+                    <div>
+                      <p className="text-xs text-emerald-300 uppercase tracking-wide font-semibold">Differential Diagnoses</p>
+                      <div className="text-sm space-y-2 mt-1">
+                        {Object.entries(feedback.evaluation.full_differential_diagnoses).map(([key, value]: any, idx) => {
+                          // Format key: convert primary_diagnosis to "Primary Diagnosis"
+                          const formattedKey = key
+                            .replace(/_/g, ' ')
+                            .split(' ')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+
+                          return (
+                            <div key={idx} className="bg-slate-900/40 p-2 rounded">
+                              <p className="text-emerald-300 font-semibold">{formattedKey}</p>
+                              <p className="text-gray-300">{typeof value === 'string' ? value : JSON.stringify(value)}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {feedback.summary?.red_flags_coverage && (
+                    <div>
+                      <p className="text-xs text-emerald-300 uppercase tracking-wide font-semibold">Red Flags Coverage</p>
+                      <p className="text-sm">{feedback.summary.red_flags_coverage}</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
@@ -545,7 +820,7 @@ export function MockInterview() {
                     Strengths
                   </h4>
                   <ul className="space-y-2">
-                    {feedback.evaluation.strengths.map((strength, idx) => (
+                    {(feedback.evaluation?.strengths || []).map((strength, idx) => (
                       <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
                         <span className="text-green-400 mt-1">•</span>
                         <span>{strength}</span>
@@ -560,7 +835,7 @@ export function MockInterview() {
                     Areas for Improvement
                   </h4>
                   <ul className="space-y-2">
-                    {feedback.evaluation.areas_for_improvement.map((improvement, idx) => (
+                    {(feedback.evaluation?.areas_for_improvement || []).map((improvement, idx) => (
                       <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
                         <span className="text-orange-400 mt-1">•</span>
                         <span>{improvement}</span>
@@ -570,22 +845,22 @@ export function MockInterview() {
                 </div>
               </div>
 
-              {feedback.evaluation.key_findings.length > 0 && (
+              {(feedback.evaluation?.key_findings?.length || 0) > 0 && (
                 <div className="p-4 bg-slate-800/50 rounded-lg border border-purple-500/30">
                   <h4 className="font-semibold text-purple-400 mb-2">Key Findings</h4>
                   <ul className="space-y-1">
-                    {feedback.evaluation.key_findings.map((finding, idx) => (
+                    {(feedback.evaluation?.key_findings || []).map((finding, idx) => (
                       <li key={idx} className="text-sm text-gray-300">• {finding}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {feedback.evaluation.missed_red_flags.length > 0 && (
+              {(feedback.evaluation?.missed_red_flags?.length || 0) > 0 && (
                 <div className="p-4 bg-slate-800/50 rounded-lg border border-red-500/30">
                   <h4 className="font-semibold text-red-400 mb-2">Missed Red Flags</h4>
                   <ul className="space-y-1">
-                    {feedback.evaluation.missed_red_flags.map((flag, idx) => (
+                    {(feedback.evaluation?.missed_red_flags || []).map((flag, idx) => (
                       <li key={idx} className="text-sm text-gray-300">• {flag}</li>
                     ))}
                   </ul>
@@ -595,9 +870,10 @@ export function MockInterview() {
               <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600/50">
                 <h4 className="font-semibold text-white mb-2">Session Summary</h4>
                 <div className="text-sm text-gray-300 space-y-1">
-                  <p>• Total interactions: {feedback.summary.total_interactions}</p>
-                  <p>• Duration: {feedback.summary.duration_minutes.toFixed(1)} minutes</p>
-                  <p>• Questions asked: {feedback.summary.questions_asked}</p>
+                  <p>• Total interactions: {feedback.summary?.total_interactions || 0}</p>
+                  <p>• Duration: {(feedback.summary?.duration_minutes || 0).toFixed(1)} minutes</p>
+                  <p>• Questions asked: {feedback.summary?.questions_asked || 0}</p>
+                  <p>• Red flags caught: {feedback.summary?.red_flags_coverage || "0/0"}</p>
                 </div>
               </div>
             </div>

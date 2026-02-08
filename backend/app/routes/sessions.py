@@ -45,13 +45,33 @@ async def start_session(session_data: SessionCreate):
         initial_greeting = await reasoning_engine.generate_initial_greeting(
             case_id=session_data.case_id
         )
-        
+
+        # Generate TTS audio for initial greeting
+        from app.config import get_settings
+        from app.services.elevenlabs_service import elevenlabs_service
+        import base64
+
+        greeting_audio_url = None
+        try:
+            settings = get_settings()
+            greeting_audio_bytes = await elevenlabs_service.generate_voice(
+                text=initial_greeting,
+                voice_id=settings.elevenlabs_voice_id
+            )
+            if greeting_audio_bytes:
+                # Return as base64 data URL
+                audio_base64 = base64.b64encode(greeting_audio_bytes).decode('utf-8')
+                greeting_audio_url = f"data:audio/mpeg;base64,{audio_base64}"
+        except Exception as e:
+            print(f"⚠️  Failed to generate greeting audio: {str(e)}")
+
         return {
             "session_id": str(session.id),
             "case_id": str(session.case_id),
             "status": session.status,
             "started_at": session.started_at.isoformat(),
             "initial_greeting": initial_greeting,
+            "greeting_audio_url": greeting_audio_url,
             "case_info": {
                 "title": case.title,
                 "chief_complaint": case.chief_complaint,
@@ -154,13 +174,17 @@ async def complete_session(session_id: UUID):
         
         # Get evaluation
         evaluation = await reasoning_engine.evaluate_session(session_id)
-        
-        return {
+        print(f"✅ Evaluation returned: {evaluation}")
+
+        response = {
             "session_id": str(session_id),
             "status": updated_session.status,
             "completed_at": updated_session.completed_at.isoformat() if updated_session.completed_at else None,
-            "evaluation": evaluation
+            "evaluation": evaluation.get("evaluation"),
+            "summary": evaluation.get("summary")
         }
+        print(f"📋 Final response: {response}")
+        return response
         
     except HTTPException:
         raise

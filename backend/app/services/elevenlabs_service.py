@@ -3,17 +3,24 @@ import assemblyai as aai
 from app.config import get_settings
 import io
 
-settings = get_settings()
-aai.settings.api_key = settings.assemblyai_api_key
-
 
 class ElevenLabsService:
     """Service for interacting with ElevenLabs API and transcription"""
 
     def __init__(self):
-        self.api_key = settings.elevenlabs_api_key
         self.base_url = "https://api.elevenlabs.io"
-        self.headers = {"xi-api-key": self.api_key}
+
+    @property
+    def api_key(self):
+        """Get API key from settings"""
+        from app.config import get_settings
+        settings = get_settings()
+        return settings.elevenlabs_api_key
+
+    @property
+    def headers(self):
+        """Get headers with fresh API key"""
+        return {"xi-api-key": self.api_key}
 
     async def transcribe_audio(self, audio_data: bytes) -> dict:
         """
@@ -26,6 +33,10 @@ class ElevenLabsService:
             Dictionary with transcription result
         """
         try:
+            # Set AssemblyAI key fresh from settings
+            settings = get_settings()
+            aai.settings.api_key = settings.assemblyai_api_key
+
             print(f"🎤 AssemblyAI Transcription Starting...")
             print(f"   Audio size: {len(audio_data)} bytes")
 
@@ -116,7 +127,7 @@ class ElevenLabsService:
             print(f"   Text length: {len(text)} characters")
             print(f"   Text preview: {text[:200]}..." if len(text) > 200 else f"   Text: {text}")
             print(f"   Voice ID: {voice_id}")
-            print(f"   API key (masked): {self.api_key[:10]}...{self.api_key[-4:]}")
+            print(f"   API Key: {self.api_key[:10]}...{self.api_key[-4:]}")
 
             async with httpx.AsyncClient() as client:
                 response = await client.post(
@@ -124,7 +135,7 @@ class ElevenLabsService:
                     headers=self.headers,
                     json={
                         "text": text,
-                        "model_id": "eleven_monolingual_v1",
+                        "model_id": "eleven_turbo_v2_5",
                         "voice_settings": {
                             "stability": 0.5,
                             "similarity_boost": 0.75,
@@ -145,23 +156,13 @@ class ElevenLabsService:
                 return audio_bytes
 
         except httpx.HTTPStatusError as e:
-            print(f"   ✗ HTTP Error generating voice:")
-            print(f"      Status: {e.response.status_code}")
-            print(f"      Response: {e.response.text[:500]}")
-            import traceback
-            traceback.print_exc()
+            print(f"   ✗ TTS Error: {e.response.status_code}")
             return b""
         except httpx.TimeoutException as e:
-            print(f"   ✗ Timeout error generating voice: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"   ✗ TTS Timeout")
             return b""
         except Exception as e:
-            print(f"   ✗ Unexpected error generating voice:")
-            print(f"      Type: {type(e).__name__}")
-            print(f"      Message: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            print(f"   ✗ TTS Failed: {str(e)}")
             return b""
     async def generate_voice_stream(self, text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM"):
         """
@@ -187,7 +188,7 @@ class ElevenLabsService:
                     headers=self.headers,
                     json={
                         "text": text,
-                        "model_id": "eleven_monolingual_v1",
+                        "model_id": "eleven_turbo_v2_5",
                         "voice_settings": {
                             "stability": 0.5,
                             "similarity_boost": 0.75,

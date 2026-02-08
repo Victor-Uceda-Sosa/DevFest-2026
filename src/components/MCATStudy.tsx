@@ -27,7 +27,7 @@ const exams: Exam[] = [
     fullName: 'Medical College Admission Test',
     description: 'Standardized exam for medical school admission in the US and Canada',
     sections: ['Biological and Biochemical Foundations', 'Chemical and Physical Foundations', 'Psychological, Social, and Biological Foundations', 'Critical Analysis and Reasoning Skills'],
-    color: 'from-purple-500 to-purple-600',
+    color: 'from-blue-500 to-cyan-500',
     icon: BookOpen,
   },
   {
@@ -36,7 +36,7 @@ const exams: Exam[] = [
     fullName: 'United States Medical Licensing Examination - Step 1',
     description: 'Assesses understanding and application of basic science concepts',
     sections: ['Anatomy', 'Biochemistry', 'Pharmacology', 'Physiology', 'Pathology', 'Microbiology', 'Immunology'],
-    color: 'from-blue-500 to-blue-600',
+    color: 'from-cyan-500 to-teal-500',
     icon: GraduationCap,
   },
   {
@@ -45,7 +45,7 @@ const exams: Exam[] = [
     fullName: 'USMLE Step 2 - Clinical Knowledge',
     description: 'Assesses clinical knowledge and patient care skills',
     sections: ['Internal Medicine', 'Surgery', 'Pediatrics', 'Psychiatry', 'Obstetrics & Gynecology', 'Preventive Medicine'],
-    color: 'from-green-500 to-green-600',
+    color: 'from-emerald-500 to-teal-500',
     icon: Stethoscope,
   },
   {
@@ -54,7 +54,7 @@ const exams: Exam[] = [
     fullName: 'United States Medical Licensing Examination - Step 3',
     description: 'Final step for medical licensure, focusing on patient management',
     sections: ['Ambulatory Care', 'Emergency Medicine', 'Inpatient Medicine', 'Biostatistics & Epidemiology'],
-    color: 'from-teal-500 to-teal-600',
+    color: 'from-teal-500 to-emerald-500',
     icon: GraduationCap,
   },
   {
@@ -63,7 +63,7 @@ const exams: Exam[] = [
     fullName: 'Comprehensive Osteopathic Medical Licensing Examination - Level 1',
     description: 'Osteopathic medical licensing exam covering basic sciences',
     sections: ['Osteopathic Principles', 'Anatomy', 'Biochemistry', 'Pharmacology', 'Physiology', 'Microbiology'],
-    color: 'from-orange-500 to-orange-600',
+    color: 'from-blue-500 to-teal-500',
     icon: BookOpen,
   },
   {
@@ -72,7 +72,7 @@ const exams: Exam[] = [
     fullName: 'Comprehensive Osteopathic Medical Licensing Examination - Level 2',
     description: 'Clinical knowledge and osteopathic medical skills assessment',
     sections: ['Clinical Medicine', 'Osteopathic Manipulative Treatment', 'Patient Care', 'Medical Ethics'],
-    color: 'from-red-500 to-red-600',
+    color: 'from-cyan-500 to-blue-500',
     icon: Stethoscope,
   },
   {
@@ -81,7 +81,7 @@ const exams: Exam[] = [
     fullName: 'Comprehensive Osteopathic Medical Licensing Examination - Level 3',
     description: 'Assessment of clinical management and osteopathic principles',
     sections: ['Patient Management', 'Osteopathic Recognition & Treatment', 'Clinical Decision Making'],
-    color: 'from-pink-500 to-pink-600',
+    color: 'from-emerald-500 to-cyan-500',
     icon: GraduationCap,
   },
 ];
@@ -141,13 +141,47 @@ export function MCATStudy() {
     };
   }, [currentExam?.id]);
 
-  const getFocusAreasForExam = async (_exam: Exam) => {
-    // TODO: Wire this to analytics or user performance data to target weak areas.
-    // Return null if data is unavailable to fall back to generic flashcards.
+  const getFocusAreasForExam = async (exam: Exam) => {
+    // Extract key concepts the student missed from recent patient interviews
     try {
-      return null as string[] | null;
-    } catch {
-      return null as string[] | null;
+      // Get recent sessions from localStorage or API
+      const sessionsJson = localStorage.getItem('recentSessions');
+      if (!sessionsJson) return null;
+
+      const recentSessions = JSON.parse(sessionsJson);
+      if (!Array.isArray(recentSessions) || recentSessions.length === 0) return null;
+
+      // Analyze last session for missed concepts
+      const lastSession = recentSessions[recentSessions.length - 1];
+      const missedConcepts: string[] = [];
+
+      // Extract missed red flags from feedback
+      if (lastSession.feedback?.evaluation?.missed_red_flags) {
+        missedConcepts.push(...lastSession.feedback.evaluation.missed_red_flags);
+      }
+
+      // Extract areas for improvement
+      if (lastSession.feedback?.evaluation?.areas_for_improvement) {
+        missedConcepts.push(...lastSession.feedback.evaluation.areas_for_improvement);
+      }
+
+      // Extract diagnosis if they didn't mention it
+      if (lastSession.feedback?.evaluation?.sample_diagnosis) {
+        const diagnosis = lastSession.feedback.evaluation.sample_diagnosis;
+        if (!lastSession.studentInputs?.some((input: string) => input.toLowerCase().includes(diagnosis.toLowerCase()))) {
+          missedConcepts.push(`Understanding ${diagnosis}`);
+        }
+      }
+
+      // Return top 3 missed concepts related to exam
+      const filteredConcepts = missedConcepts
+        .filter(concept => concept && concept.length > 0)
+        .slice(0, 3);
+
+      return filteredConcepts.length > 0 ? filteredConcepts : null;
+    } catch (error) {
+      console.error('Error extracting focus areas:', error);
+      return null;
     }
   };
 
@@ -347,7 +381,7 @@ export function MCATStudy() {
           ))}
         </div>
 
-        <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-500/30">
+        <Card className="p-6 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border border-blue-500/30">
           <h3 className="text-lg font-semibold text-white mb-3">📚 Comprehensive Study Platform</h3>
           <p className="text-gray-300">
             Access AI-powered study materials, practice questions, and personalized learning paths for all major medical licensing examinations. 
@@ -378,7 +412,7 @@ export function MCATStudy() {
         </div>
       </div>
 
-      <Card className="p-6 border-2 border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50">
+      <Card className="p-6 border-2 border-emerald-500/30 bg-gradient-to-br from-slate-800/50 to-slate-900/50">
         <h3 className="text-xl font-semibold text-white">Performance Analytics</h3>
         <p className="text-gray-300 mt-2">
           Track your knowledge across {currentExam?.name} subjects.
@@ -394,17 +428,17 @@ export function MCATStudy() {
         {statsStatus === 'loaded' && performanceStats && (
           <div className="mt-4 space-y-3">
             {typeof performanceStats.overallScore === 'number' && (
-              <div className="flex items-center justify-between rounded-lg border border-emerald-100 bg-white px-4 py-2">
+              <div className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-slate-900/40 px-4 py-2">
                 <span className="text-sm text-gray-300">Overall readiness</span>
-                <span className="text-sm font-semibold text-emerald-700">{performanceStats.overallScore}%</span>
+                <span className="text-sm font-semibold text-emerald-400">{performanceStats.overallScore}%</span>
               </div>
             )}
             {performanceStats.sectionScores && performanceStats.sectionScores.length > 0 && (
               <div className="grid md:grid-cols-2 gap-3">
                 {performanceStats.sectionScores.map((entry) => (
-                  <div key={entry.section} className="flex items-center justify-between rounded-lg border border-emerald-100 bg-white px-4 py-2">
+                  <div key={entry.section} className="flex items-center justify-between rounded-lg border border-emerald-500/30 bg-slate-900/40 px-4 py-2">
                     <span className="text-sm text-gray-300">{entry.section}</span>
-                    <span className="text-sm font-semibold text-emerald-700">{entry.score}%</span>
+                    <span className="text-sm font-semibold text-emerald-400">{entry.score}%</span>
                   </div>
                 ))}
               </div>
@@ -431,7 +465,7 @@ export function MCATStudy() {
         </div>
       </Card>
 
-      <Card className="p-6 border-2 border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50">
+      <Card className="p-6 border-2 border-cyan-500/30 bg-gradient-to-br from-slate-800/50 to-slate-900/50">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-white">Personalized Flashcards</h3>
@@ -453,9 +487,9 @@ export function MCATStudy() {
         {flashcards.length > 0 && (
           <div className="mt-6 grid md:grid-cols-2 gap-4">
             {flashcards.map((card, idx) => (
-              <Card key={idx} className="p-4 border border-indigo-100 bg-white">
+              <Card key={idx} className="p-4 border border-cyan-500/30 bg-white">
                 <div className="flex items-center justify-between">
-                  <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100">
+                  <Badge className="bg-indigo-100 text-cyan-400 hover:bg-indigo-100">
                     {card.section || 'General'}
                   </Badge>
                   <span className="text-xs text-gray-400">#{idx + 1}</span>
@@ -468,7 +502,7 @@ export function MCATStudy() {
         )}
       </Card>
 
-      <Card className="p-6 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-500/30">
+      <Card className="p-6 bg-gradient-to-r from-slate-800/50 to-slate-900/50 border border-blue-500/30">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-white mb-2">AI-Powered Study Plan</h3>
@@ -488,7 +522,7 @@ export function MCATStudy() {
         {planError && <p className="mt-4 text-sm text-red-600">{planError}</p>}
 
         {studyPlan && (
-          <div className="mt-4 rounded-lg border border-blue-100 bg-white p-4">
+          <div className="mt-4 rounded-lg border border-blue-500/30 bg-white p-4">
             {usedGenericPlan && (
               <p className="text-sm text-blue-700 mb-2">
                 We could not retrieve your performance data, so this is a generic study plan.
