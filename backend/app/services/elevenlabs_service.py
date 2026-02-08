@@ -26,6 +26,9 @@ class ElevenLabsService:
             Dictionary with transcription result
         """
         try:
+            print(f"🎤 AssemblyAI Transcription Starting...")
+            print(f"   Audio size: {len(audio_data)} bytes")
+            
             # Create transcriber with universal-3-pro model
             transcriber = aai.Transcriber()
 
@@ -37,21 +40,43 @@ class ElevenLabsService:
             config = aai.TranscriptionConfig(speech_models=["universal-2"])
 
             # Transcribe using AssemblyAI
+            print(f"   Sending to AssemblyAI...")
             transcript = transcriber.transcribe(audio_file, config=config)
+            
+            print(f"   AssemblyAI response received")
+            print(f"   Status: {transcript.status}")
+            print(f"   Text: '{transcript.text}'")
+            print(f"   Text length: {len(transcript.text) if transcript.text else 0}")
+            print(f"   Confidence: {transcript.confidence if hasattr(transcript, 'confidence') else 'N/A'}")
+            print(f"   Audio duration: {transcript.audio_duration if hasattr(transcript, 'audio_duration') else 'N/A'}s")
 
             if transcript.status == aai.TranscriptStatus.error:
+                print(f"   ✗ Transcription error: {transcript.error}")
                 return {
                     "success": False,
                     "error": transcript.error,
                 }
+            
+            # Check if text is None or empty
+            transcript_text = transcript.text if transcript.text else ""
+            
+            if not transcript_text or transcript_text.strip() == "":
+                print(f"   ⚠️  Warning: Transcription completed but text is empty")
+                print(f"   This usually means:")
+                print(f"      - Audio was too short (< 0.5 seconds)")
+                print(f"      - No speech detected in audio")
+                print(f"      - Audio volume too low")
+                print(f"      - Background noise only")
 
             return {
-                "transcript": transcript.text,
+                "transcript": transcript_text,
                 "success": True,
-                "duration_seconds": 0,
+                "duration_seconds": transcript.audio_duration if hasattr(transcript, 'audio_duration') else 0,
             }
         except Exception as e:
-            print(f"Transcription error: {e}")
+            print(f"   ✗ Transcription exception: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return {
                 "success": False,
                 "error": str(e),
@@ -87,6 +112,12 @@ class ElevenLabsService:
             Audio bytes
         """
         try:
+            print(f"🔊 ElevenLabs TTS Starting...")
+            print(f"   Text length: {len(text)} characters")
+            print(f"   Text preview: {text[:200]}..." if len(text) > 200 else f"   Text: {text}")
+            print(f"   Voice ID: {voice_id}")
+            print(f"   API key (masked): {self.api_key[:10]}...{self.api_key[-4:]}")
+            
             async with httpx.AsyncClient() as client:
                 response = await client.post(
                     f"{self.base_url}/v1/text-to-speech/{voice_id}",
@@ -101,10 +132,36 @@ class ElevenLabsService:
                     },
                     timeout=30.0,
                 )
+                
+                print(f"   HTTP Status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    print(f"   ✗ Error response body: {response.text[:500]}")
+                
                 response.raise_for_status()
-                return response.content
+                
+                audio_bytes = response.content
+                print(f"   ✓ TTS audio generated: {len(audio_bytes)} bytes")
+                return audio_bytes
+                
+        except httpx.HTTPStatusError as e:
+            print(f"   ✗ HTTP Error generating voice:")
+            print(f"      Status: {e.response.status_code}")
+            print(f"      Response: {e.response.text[:500]}")
+            import traceback
+            traceback.print_exc()
+            return b""
+        except httpx.TimeoutException as e:
+            print(f"   ✗ Timeout error generating voice: {e}")
+            import traceback
+            traceback.print_exc()
+            return b""
         except Exception as e:
-            print(f"Error generating voice: {e}")
+            print(f"   ✗ Unexpected error generating voice:")
+            print(f"      Type: {type(e).__name__}")
+            print(f"      Message: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return b""
 
 

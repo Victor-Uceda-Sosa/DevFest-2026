@@ -116,11 +116,27 @@ export function MockInterview() {
     if (!audioBlob || !sessionId) return;
 
     try {
+      console.log('\n🚀 ============ SENDING AUDIO TO BACKEND ============');
+      console.log('📊 Audio Blob Info:');
+      console.log('   - Size:', audioBlob.size, 'bytes');
+      console.log('   - Type:', audioBlob.type);
+      console.log('   - Recording duration:', recordingTime, 'seconds');
+      console.log('   - Session ID:', sessionId);
+      
       setIsProcessing(true);
       setError(null);
 
       // Send audio to K2 reasoning endpoint
+      console.log('📤 Sending POST request to /api/reasoning/interact...');
+      const startTime = Date.now();
+      
       const response = await interviewApi.sendAudioInteraction(sessionId, audioBlob);
+      
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`✅ Response received in ${duration}s`);
+      console.log('📝 Transcription:', response.student_input);
+      console.log('🤖 AI Response:', response.tutor_response.substring(0, 100) + '...');
+      console.log('🔊 Audio URL:', response.audio_url || 'No audio');
 
       // Add student message (transcribed)
       const newMessages: Message[] = [
@@ -140,14 +156,22 @@ export function MockInterview() {
       
       // Play audio response if available
       if (response.audio_url) {
+        console.log('🎵 Playing audio response...');
         playAudioResponse(response.audio_url);
+      } else {
+        console.warn('⚠️  No audio URL in response');
       }
 
       // Reset recording state
       setAudioBlob(null);
       setRecordingTime(0);
+      console.log('============ AUDIO SEND COMPLETE ============\n');
     } catch (err: any) {
-      console.error('Error sending audio:', err);
+      console.error('\n❌ ============ AUDIO SEND FAILED ============');
+      console.error('Error type:', err.constructor.name);
+      console.error('Error message:', err.message);
+      console.error('Error details:', err);
+      console.error('============================================\n');
       setError(err.message || 'Failed to process audio. Please try again.');
     } finally {
       setIsProcessing(false);

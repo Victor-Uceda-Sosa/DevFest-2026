@@ -30,10 +30,14 @@ def validate_audio_file(file: UploadFile, max_size_mb: int = 10) -> None:
         HTTPException: If validation fails
     """
     # Check content type
-    if file.content_type not in ALLOWED_AUDIO_FORMATS:
+    # Extract base MIME type (strip codec parameters like ";codecs=opus")
+    content_type = file.content_type or ""
+    base_content_type = content_type.split(";")[0].strip()
+    
+    if base_content_type not in ALLOWED_AUDIO_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid audio format. Allowed formats: {', '.join(ALLOWED_AUDIO_FORMATS)}"
+            detail=f"Invalid audio format '{base_content_type}'. Allowed formats: {', '.join(sorted(ALLOWED_AUDIO_FORMATS))}"
         )
     
     # Check file size (if available)

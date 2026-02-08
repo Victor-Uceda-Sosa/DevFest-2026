@@ -17,22 +17,55 @@ export class AudioRecorder {
   private onTimeUpdate?: (seconds: number) => void;
 
   constructor(private config: AudioRecorderConfig = {}) {
+    // Try to find the best supported audio format
+    const supportedTypes = [
+      'audio/webm;codecs=opus',  // Best quality, modern browsers
+      'audio/webm',               // Fallback WebM
+      'audio/mp4',                // Safari/iOS
+      'audio/ogg;codecs=opus',    // Firefox fallback
+    ];
+    
+    let selectedMimeType = 'audio/webm'; // default
+    for (const type of supportedTypes) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        selectedMimeType = type;
+        console.log(`✓ Using audio format: ${type}`);
+        break;
+      }
+    }
+    
     this.config = {
-      mimeType: 'audio/webm',
-      audioBitsPerSecond: 128000,
+      mimeType: selectedMimeType,
+      audioBitsPerSecond: 128000, // Higher bitrate for better quality
       ...config,
     };
   }
 
   async start(onTimeUpdate?: (seconds: number) => void): Promise<void> {
     try {
-      // Request microphone access
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request microphone access with specific constraints for better quality
+      this.stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000, // Higher sample rate for better quality
+        }
+      });
+      
+      console.log('🎤 Microphone access granted');
+      console.log('Audio tracks:', this.stream.getAudioTracks().map(t => ({
+        label: t.label,
+        settings: t.getSettings()
+      })));
       
       // Create MediaRecorder
       const options: MediaRecorderOptions = {};
       if (this.config.mimeType && MediaRecorder.isTypeSupported(this.config.mimeType)) {
         options.mimeType = this.config.mimeType;
+        console.log(`✓ MediaRecorder using: ${this.config.mimeType}`);
+      } else {
+        console.warn(`⚠️  ${this.config.mimeType} not supported, using browser default`);
       }
       if (this.config.audioBitsPerSecond) {
         options.audioBitsPerSecond = this.config.audioBitsPerSecond;
@@ -47,11 +80,13 @@ export class AudioRecorder {
       this.mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           this.audioChunks.push(event.data);
+          console.log(`📦 Audio chunk received: ${event.data.size} bytes`);
         }
       };
 
       // Start recording
       this.mediaRecorder.start();
+      console.log('🔴 Recording started');
 
       // Start timer
       this.timerInterval = window.setInterval(() => {
@@ -78,6 +113,11 @@ export class AudioRecorder {
         const audioBlob = new Blob(this.audioChunks, {
           type: this.config.mimeType || 'audio/webm',
         });
+        
+        console.log(`⏹️  Recording stopped`);
+        console.log(`📊 Total audio size: ${audioBlob.size} bytes`);
+        console.log(`📊 Audio type: ${audioBlob.type}`);
+        console.log(`⏱️  Duration: ${this.recordingTime} seconds`);
         
         // Clean up
         this.cleanup();

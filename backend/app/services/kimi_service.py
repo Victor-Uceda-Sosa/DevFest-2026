@@ -128,28 +128,28 @@ class KimiService:
         Returns:
             Dictionary with tutor response and reasoning metadata
         """
-        from app.utils.prompt_templates import format_system_prompt, format_interaction_prompt
+        from app.utils.prompt_templates import (
+    format_system_prompt,
+    format_patient_prompt,
+    format_interaction_prompt
+)
         
-        # Format prompts
-        system_prompt = format_system_prompt(
+        # Use PATIENT prompt instead of tutor prompt for patient roleplay mode
+        system_prompt = format_patient_prompt(
             case_description=str(case_context.get("clinical_scenario", {})),
             chief_complaint=case_context.get("chief_complaint", "")
         )
         
-        # Create conversation context
-        history_text = self._format_history(conversation_history)
-        
-        user_message = format_interaction_prompt(
-            student_input=student_input,
-            conversation_history=history_text
-        )
+        # For patient mode, pass student's question directly (no complex analysis)
+        user_message = student_input
         
         # Query Kimi K2.5 via Featherless
         result = await self.query_k2_thinking(
             system_prompt=system_prompt,
             user_message=user_message,
             conversation_history=conversation_history[:-1] if len(conversation_history) > 0 else None,
-            temperature=0.7
+            temperature=0.8,  # Slightly higher for more natural patient responses
+            max_tokens=500  # Shorter limit for patient responses
         )
         
         # Extract reasoning metadata

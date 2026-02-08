@@ -4,7 +4,7 @@ import { ApiError } from '../types/api';
 // Create Axios instance with base configuration
 const api: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
-  timeout: 30000, // 30 seconds
+  timeout: 120000, // 120 seconds (increased for audio processing: transcription + AI + TTS)
   headers: {
     'Content-Type': 'application/json',
   },
