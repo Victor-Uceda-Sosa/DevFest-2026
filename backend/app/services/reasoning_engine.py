@@ -20,7 +20,10 @@ class ReasoningEngine:
     
     async def generate_initial_greeting(self, case_id: UUID) -> str:
         """
-        Generate initial greeting for a new session.
+        Generate initial greeting for a new session using static template.
+        
+        This avoids API rate limits by using predefined templates with case context.
+        AI responses are still used for all actual interview interactions.
         
         Args:
             case_id: Clinical case UUID
@@ -33,26 +36,21 @@ class ReasoningEngine:
         if not case:
             raise Exception("Case not found")
         
-        # Format initial prompt
-        initial_prompt = format_initial_greeting(
-            case_description=str(case.clinical_scenario),
-            chief_complaint=case.chief_complaint,
-            learning_objectives=case.learning_objectives
-        )
+        # Use static template-based greeting (no API call to avoid rate limits)
+        # Select greeting template based on case_id hash for variety but consistency
+        greeting_templates = [
+            f"Hello doctor, I'm here because {case.chief_complaint.lower()}.",
+            f"Hi doctor, I've been experiencing {case.chief_complaint.lower()} and I'm worried about it.",
+            f"Doctor, I need help. I've been having {case.chief_complaint.lower()}.",
+            f"Hello, um... I've been having {case.chief_complaint.lower()} and it's been bothering me.",
+            f"Good morning doctor. {case.chief_complaint}. That's why I'm here today."
+        ]
         
-        # Query Kimi for initial greeting
-        system_prompt = format_system_prompt(
-            case_description=str(case.clinical_scenario),
-            chief_complaint=case.chief_complaint
-        )
+        # Select template based on case_id for consistency (same case = same greeting style)
+        template_index = int(str(case_id).split('-')[0], 16) % len(greeting_templates)
+        greeting = greeting_templates[template_index]
         
-        result = await kimi_service.query_k2_thinking(
-            system_prompt=system_prompt,
-            user_message=initial_prompt,
-            temperature=0.8
-        )
-        
-        return result["response"]
+        return greeting
     
     async def generate_response(
         self,
