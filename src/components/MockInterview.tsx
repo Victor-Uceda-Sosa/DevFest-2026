@@ -311,7 +311,7 @@ export function MockInterview() {
                   <Button
                     onClick={() => startInterview(caseData)}
                     disabled={isProcessing}
-                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500"
                   >
                     <Play className="w-4 h-4 mr-2" />
                     Start Interview
@@ -586,7 +586,7 @@ export function MockInterview() {
           )}
 
           <div className="flex gap-3 mt-8 justify-center">
-            <Button onClick={resetInterview} className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+            <Button onClick={resetInterview} className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500">
               <RotateCcw className="w-4 h-4 mr-2" />
               Try Another Case
             </Button>
