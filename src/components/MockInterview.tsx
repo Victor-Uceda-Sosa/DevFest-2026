@@ -249,31 +249,31 @@ export function MockInterview() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Mock Patient Interviews</h2>
-          <p className="text-gray-600">Select a clinical case to practice your patient interview skills</p>
+          <h2 className="text-3xl font-bold text-white mb-2">Mock Patient Interviews</h2>
+          <p className="text-gray-400">Select a clinical case to practice your patient interview skills</p>
         </div>
 
         {error && (
-          <Card className="p-4 bg-red-50 border-2 border-red-200">
+          <Card className="p-4 bg-red-900/20 border border-red-500/30">
             <div className="flex gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
               <div>
-                <p className="text-sm text-red-900 font-medium">Error</p>
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-300 font-medium">Error</p>
+                <p className="text-sm text-red-400">{error}</p>
               </div>
             </div>
           </Card>
         )}
 
-        <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200">
+        <Card className="p-6 bg-slate-900/40 border border-blue-500/30">
           <div className="flex items-start gap-4">
-            <div className="p-3 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex-shrink-0">
-              <Sparkles className="w-6 h-6 text-white" />
+            <div className="p-3 rounded-xl bg-cyan-500/15 flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-cyan-400" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Interview Platform</h3>
-              <p className="text-gray-700 mb-4">
-                Practice with AI patients powered by K2 clinical reasoning and ElevenLabs voice synthesis. 
+              <h3 className="text-lg font-semibold text-white mb-2">AI-Powered Interview Platform</h3>
+              <p className="text-gray-400 mb-4">
+                Practice with AI patients powered by K2 clinical reasoning and ElevenLabs voice synthesis.
                 Speak naturally and receive intelligent Socratic responses to guide your learning.
               </p>
             </div>
@@ -282,23 +282,23 @@ export function MockInterview() {
 
         {loadingCases ? (
           <Card className="p-12 text-center">
-            <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading clinical cases...</p>
+            <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400">Loading clinical cases...</p>
           </Card>
         ) : cases.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {cases.map((caseData) => (
-              <Card key={caseData.id} className="p-6 hover:shadow-lg transition-shadow border-2 border-gray-100">
+              <Card key={caseData.id} className="p-6 hover:border-blue-500/50 transition-all border border-slate-700/50 bg-slate-900/30">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">{caseData.title}</h3>
-                    <div className="text-sm text-gray-600">
+                    <h3 className="text-xl font-semibold text-white mb-2">{caseData.title}</h3>
+                    <div className="text-sm text-gray-400">
                       <span className="font-medium">Chief Complaint:</span> {caseData.chief_complaint}
                     </div>
                   </div>
-                  
+
                   {caseData.learning_objectives && caseData.learning_objectives.length > 0 && (
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-gray-400">
                       <span className="font-medium">Learning Objectives:</span>
                       <ul className="mt-1 space-y-1">
                         {caseData.learning_objectives.slice(0, 2).map((obj, idx) => (
@@ -321,7 +321,7 @@ export function MockInterview() {
             ))}
           </div>
         ) : (
-          <Card className="p-12 text-center">
+          <Card className="p-12 text-center bg-slate-900/40 border border-slate-700/50">
             <p className="text-gray-500 mb-4">No clinical cases available.</p>
             <Button onClick={loadCases} variant="outline">
               <RotateCcw className="w-4 h-4 mr-2" />
@@ -338,8 +338,8 @@ export function MockInterview() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">{selectedCase.title}</h2>
-          <p className="text-gray-600">Chief Complaint: {selectedCase.chief_complaint}</p>
+          <h2 className="text-3xl font-bold text-white">{selectedCase.title}</h2>
+          <p className="text-gray-400">Chief Complaint: {selectedCase.chief_complaint}</p>
         </div>
         <Button onClick={resetInterview} variant="outline" disabled={isProcessing}>
           <RotateCcw className="w-4 h-4 mr-2" />
@@ -348,18 +348,18 @@ export function MockInterview() {
       </div>
 
       {error && (
-        <Card className="p-4 bg-red-50 border-2 border-red-200">
+        <Card className="p-4 bg-red-900/20 border border-red-500/30">
           <div className="flex gap-2">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
             <div>
-              <p className="text-sm text-red-900 font-medium">Error</p>
-              <p className="text-sm text-red-800">{error}</p>
+              <p className="text-sm text-red-300 font-medium">Error</p>
+              <p className="text-sm text-red-400">{error}</p>
             </div>
           </div>
         </Card>
       )}
 
-      <Card className="p-6">
+      <Card className="p-6 bg-slate-900/40 border border-slate-700/50">
         <div className="space-y-4 mb-6 max-h-[500px] overflow-y-auto">
           {messages.map((message, index) => (
             <div key={index} className={`flex gap-3 ${message.role === 'student' ? 'justify-end' : ''}`}>
@@ -371,8 +371,8 @@ export function MockInterview() {
               <div
                 className={`max-w-[70%] p-4 rounded-lg ${
                   message.role === 'patient'
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
+                    ? 'bg-slate-700/50 text-gray-100'
+                    : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
                 }`}
               >
                 <p>{message.content}</p>
@@ -397,10 +397,10 @@ export function MockInterview() {
         {!isComplete && (
           <div className="space-y-3">
             {/* Voice Recording Section */}
-            <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
+            <div className="p-6 bg-slate-900/40 rounded-lg border border-blue-500/30">
               {!isRecording && !audioBlob && (
                 <div className="text-center">
-                  <p className="text-gray-700 mb-4">
+                  <p className="text-gray-400 mb-4">
                     Click the microphone to record your question or response
                   </p>
                   <Button
@@ -417,10 +417,10 @@ export function MockInterview() {
               {isRecording && (
                 <div className="text-center">
                   <div className="mb-4">
-                    <div className="text-3xl font-bold text-red-600 mb-2 animate-pulse">
+                    <div className="text-3xl font-bold text-red-500 mb-2 animate-pulse">
                       🔴 {formatRecordingTime(recordingTime)}
                     </div>
-                    <p className="text-gray-700">Recording...</p>
+                    <p className="text-gray-400">Recording...</p>
                   </div>
                   <Button
                     onClick={stopRecording}
@@ -433,7 +433,7 @@ export function MockInterview() {
 
               {audioBlob && !isRecording && (
                 <div className="text-center">
-                  <p className="text-gray-700 mb-4">
+                  <p className="text-gray-400 mb-4">
                     ✓ Recording ready ({formatRecordingTime(recordingTime)})
                   </p>
                   <div className="flex gap-2 justify-center">
@@ -482,10 +482,10 @@ export function MockInterview() {
       </Card>
 
       {!isComplete && (
-        <Card className="p-4 bg-blue-50 border-2 border-blue-100">
+        <Card className="p-4 bg-blue-900/20 border border-blue-500/30">
           <div className="flex gap-2">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
-            <p className="text-sm text-blue-900">
+            <AlertCircle className="w-5 h-5 text-blue-400 flex-shrink-0" />
+            <p className="text-sm text-blue-300">
               <span className="font-semibold">Tip:</span> Use open-ended questions to gather comprehensive information.
               Remember OPQRST: Onset, Provocation, Quality, Radiation, Severity, Time.
             </p>
@@ -494,57 +494,57 @@ export function MockInterview() {
       )}
 
       {isComplete && (
-        <Card className="p-8">
+        <Card className="p-8 bg-slate-900/40 border border-slate-700/50">
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center mx-auto mb-4">
               <CheckCircle2 className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-2">Interview Complete</h3>
-            <p className="text-gray-600">
+            <h3 className="text-2xl font-bold text-white mb-2">Interview Complete</h3>
+            <p className="text-gray-400">
               {selectedCase.title} — {messages.filter(m => m.role === 'student').length} questions asked
             </p>
           </div>
 
           {feedbackLoading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-              <p className="text-gray-600 font-medium">Analyzing your interview with K2 AI...</p>
-              <p className="text-sm text-gray-400 mt-1">Reviewing your clinical technique and reasoning</p>
+              <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4" />
+              <p className="text-gray-300 font-medium">Analyzing your interview with K2 AI...</p>
+              <p className="text-sm text-gray-500 mt-1">Reviewing your clinical technique and reasoning</p>
             </div>
           )}
 
           {!feedbackLoading && feedback && (
             <div className="space-y-4">
-              <div className="p-4 bg-white rounded-lg border-2 border-blue-100">
-                <h4 className="font-semibold text-gray-900 mb-2">Overall Assessment</h4>
-                <p className="text-gray-700">{feedback.evaluation.overall_assessment}</p>
+              <div className="p-4 bg-slate-800/50 rounded-lg border border-blue-500/30">
+                <h4 className="font-semibold text-white mb-2">Overall Assessment</h4>
+                <p className="text-gray-300">{feedback.evaluation.overall_assessment}</p>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-4 bg-white rounded-lg border-2 border-green-100">
-                  <h4 className="font-semibold text-green-700 mb-2 flex items-center gap-2">
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-green-500/30">
+                  <h4 className="font-semibold text-green-400 mb-2 flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4" />
                     Strengths
                   </h4>
                   <ul className="space-y-2">
                     {feedback.evaluation.strengths.map((strength, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                        <span className="text-green-600 mt-1">•</span>
+                      <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                        <span className="text-green-400 mt-1">•</span>
                         <span>{strength}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                <div className="p-4 bg-white rounded-lg border-2 border-orange-100">
-                  <h4 className="font-semibold text-orange-700 mb-2 flex items-center gap-2">
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-orange-500/30">
+                  <h4 className="font-semibold text-orange-400 mb-2 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
                     Areas for Improvement
                   </h4>
                   <ul className="space-y-2">
                     {feedback.evaluation.areas_for_improvement.map((improvement, idx) => (
-                      <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                        <span className="text-orange-600 mt-1">•</span>
+                      <li key={idx} className="text-sm text-gray-300 flex items-start gap-2">
+                        <span className="text-orange-400 mt-1">•</span>
                         <span>{improvement}</span>
                       </li>
                     ))}
@@ -553,30 +553,30 @@ export function MockInterview() {
               </div>
 
               {feedback.evaluation.key_findings.length > 0 && (
-                <div className="p-4 bg-white rounded-lg border-2 border-purple-100">
-                  <h4 className="font-semibold text-purple-700 mb-2">Key Findings</h4>
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-purple-500/30">
+                  <h4 className="font-semibold text-purple-400 mb-2">Key Findings</h4>
                   <ul className="space-y-1">
                     {feedback.evaluation.key_findings.map((finding, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {finding}</li>
+                      <li key={idx} className="text-sm text-gray-300">• {finding}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
               {feedback.evaluation.missed_red_flags.length > 0 && (
-                <div className="p-4 bg-white rounded-lg border-2 border-red-100">
-                  <h4 className="font-semibold text-red-700 mb-2">Missed Red Flags</h4>
+                <div className="p-4 bg-slate-800/50 rounded-lg border border-red-500/30">
+                  <h4 className="font-semibold text-red-400 mb-2">Missed Red Flags</h4>
                   <ul className="space-y-1">
                     {feedback.evaluation.missed_red_flags.map((flag, idx) => (
-                      <li key={idx} className="text-sm text-gray-700">• {flag}</li>
+                      <li key={idx} className="text-sm text-gray-300">• {flag}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <h4 className="font-semibold text-gray-900 mb-2">Session Summary</h4>
-                <div className="text-sm text-gray-700 space-y-1">
+              <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-600/50">
+                <h4 className="font-semibold text-white mb-2">Session Summary</h4>
+                <div className="text-sm text-gray-300 space-y-1">
                   <p>• Total interactions: {feedback.summary.total_interactions}</p>
                   <p>• Duration: {feedback.summary.duration_minutes.toFixed(1)} minutes</p>
                   <p>• Questions asked: {feedback.summary.questions_asked}</p>
