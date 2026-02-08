@@ -314,15 +314,15 @@ export function MCATStudy() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Exam Preparation</h2>
-          <p className="text-gray-600">Select your exam to access study materials and practice resources</p>
+          <h2 className="text-3xl font-bold text-white mb-2">Exam Preparation</h2>
+          <p className="text-gray-400">Select your exam to access study materials and practice resources</p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {exams.map((exam) => (
             <Card
               key={exam.id}
-              className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-gray-100 hover:border-blue-200 group"
+              className="p-6 hover:shadow-xl transition-all duration-300 cursor-pointer border-2 border-slate-700/50 hover:border-blue-200 group"
               onClick={() => setSelectedExam(exam.id)}
             >
               <div className="space-y-4">
@@ -331,14 +331,14 @@ export function MCATStudy() {
                     <exam.icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-xl font-semibold text-white group-hover:text-cyan-400 transition-colors">
                       {exam.name}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">{exam.fullName}</p>
+                    <p className="text-sm text-gray-400 mt-1">{exam.fullName}</p>
                   </div>
                 </div>
-                <p className="text-gray-700 text-sm">{exam.description}</p>
-                <div className="flex items-center gap-2 text-blue-600 font-medium pt-2">
+                <p className="text-gray-300 text-sm">{exam.description}</p>
+                <div className="flex items-center gap-2 text-cyan-400 font-medium pt-2">
                   <span>Enter Study Zone</span>
                   <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
@@ -347,9 +347,9 @@ export function MCATStudy() {
           ))}
         </div>
 
-        <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-100">
-          <h3 className="text-lg font-semibold text-gray-900 mb-3">📚 Comprehensive Study Platform</h3>
-          <p className="text-gray-700">
+        <Card className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-500/30">
+          <h3 className="text-lg font-semibold text-white mb-3">📚 Comprehensive Study Platform</h3>
+          <p className="text-gray-300">
             Access AI-powered study materials, practice questions, and personalized learning paths for all major medical licensing examinations. 
             Our platform adapts to your learning style and tracks your progress across all exam categories.
           </p>
@@ -372,22 +372,22 @@ export function MCATStudy() {
           {currentExam?.icon && <currentExam.icon className="w-8 h-8 text-white" />}
         </div>
         <div className="flex-1">
-          <h2 className="text-3xl font-bold text-gray-900">{currentExam?.name}</h2>
-          <p className="text-lg text-gray-600 mt-1">{currentExam?.fullName}</p>
-          <p className="text-gray-700 mt-2">{currentExam?.description}</p>
+          <h2 className="text-3xl font-bold text-white">{currentExam?.name}</h2>
+          <p className="text-lg text-gray-400 mt-1">{currentExam?.fullName}</p>
+          <p className="text-gray-300 mt-2">{currentExam?.description}</p>
         </div>
       </div>
 
       <Card className="p-6 border-2 border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50">
-        <h3 className="text-xl font-semibold text-gray-900">Performance Analytics</h3>
-        <p className="text-gray-700 mt-2">
+        <h3 className="text-xl font-semibold text-white">Performance Analytics</h3>
+        <p className="text-gray-300 mt-2">
           Track your knowledge across {currentExam?.name} subjects.
         </p>
         {statsStatus === 'loading' && (
           <p className="mt-4 text-sm text-gray-500">Loading your performance analytics...</p>
         )}
         {statsStatus === 'missing' && (
-          <p className="mt-4 text-sm text-gray-600">
+          <p className="mt-4 text-sm text-gray-400">
             No performance analytics are available yet. Once your data is connected, your strengths and gaps will appear here.
           </p>
         )}
@@ -395,7 +395,7 @@ export function MCATStudy() {
           <div className="mt-4 space-y-3">
             {typeof performanceStats.overallScore === 'number' && (
               <div className="flex items-center justify-between rounded-lg border border-emerald-100 bg-white px-4 py-2">
-                <span className="text-sm text-gray-700">Overall readiness</span>
+                <span className="text-sm text-gray-300">Overall readiness</span>
                 <span className="text-sm font-semibold text-emerald-700">{performanceStats.overallScore}%</span>
               </div>
             )}
@@ -403,14 +403,14 @@ export function MCATStudy() {
               <div className="grid md:grid-cols-2 gap-3">
                 {performanceStats.sectionScores.map((entry) => (
                   <div key={entry.section} className="flex items-center justify-between rounded-lg border border-emerald-100 bg-white px-4 py-2">
-                    <span className="text-sm text-gray-700">{entry.section}</span>
+                    <span className="text-sm text-gray-300">{entry.section}</span>
                     <span className="text-sm font-semibold text-emerald-700">{entry.score}%</span>
                   </div>
                 ))}
               </div>
             )}
             {performanceStats.summary && (
-              <p className="text-sm text-gray-700">{performanceStats.summary}</p>
+              <p className="text-sm text-gray-300">{performanceStats.summary}</p>
             )}
           </div>
         )}
@@ -418,14 +418,14 @@ export function MCATStudy() {
 
       {/* Exam Sections */}
       <Card className="p-6">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">Exam Coverage</h3>
+        <h3 className="text-xl font-semibold text-white mb-4">Exam Coverage</h3>
         <div className="grid md:grid-cols-2 gap-3">
           {currentExam?.sections.map((section, idx) => (
-            <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <div key={idx} className="flex items-center gap-3 p-3 bg-slate-900/40 rounded-lg border border-slate-700/50 hover:border-blue-300 transition-colors">
+              <div className="w-8 h-8 rounded-full bg-blue-900/20 flex items-center justify-center flex-shrink-0">
                 <span className="text-blue-700 font-semibold text-sm">{idx + 1}</span>
               </div>
-              <span className="text-gray-900">{section}</span>
+              <span className="text-white">{section}</span>
             </div>
           ))}
         </div>
@@ -434,8 +434,8 @@ export function MCATStudy() {
       <Card className="p-6 border-2 border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900">Personalized Flashcards</h3>
-            <p className="text-gray-700 mt-2">
+            <h3 className="text-xl font-semibold text-white">Personalized Flashcards</h3>
+            <p className="text-gray-300 mt-2">
               Generate flashcards tailored to {currentExam?.name} and your weak areas.
             </p>
           </div>
@@ -460,26 +460,26 @@ export function MCATStudy() {
                   </Badge>
                   <span className="text-xs text-gray-400">#{idx + 1}</span>
                 </div>
-                <p className="mt-3 font-semibold text-gray-900">{card.question}</p>
-                <p className="mt-2 text-gray-700">{card.answer}</p>
+                <p className="mt-3 font-semibold text-white">{card.question}</p>
+                <p className="mt-2 text-gray-300">{card.answer}</p>
               </Card>
             ))}
           </div>
         )}
       </Card>
 
-      <Card className="p-6 bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-100">
+      <Card className="p-6 bg-gradient-to-r from-blue-50 to-green-50 border border-blue-500/30">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">AI-Powered Study Plan</h3>
-            <p className="text-gray-700">
+            <h3 className="text-lg font-semibold text-white mb-2">AI-Powered Study Plan</h3>
+            <p className="text-gray-300">
               Generate a study plan for {currentExam?.name}. If your performance data is available, it will be tailored to your needs.
             </p>
           </div>
           <Button
             onClick={generateStudyPlan}
             disabled={isPlanGenerating}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800"
+            className="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-blue-700 hover:to-blue-800"
           >
             {isPlanGenerating ? 'Generating...' : 'Generate My Study Plan'}
           </Button>
@@ -494,7 +494,7 @@ export function MCATStudy() {
                 We could not retrieve your performance data, so this is a generic study plan.
               </p>
             )}
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{studyPlan}</p>
+            <p className="text-sm text-gray-300 whitespace-pre-wrap">{studyPlan}</p>
           </div>
         )}
       </Card>

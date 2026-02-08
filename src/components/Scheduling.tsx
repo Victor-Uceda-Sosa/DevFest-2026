@@ -19,10 +19,10 @@ interface Event {
 }
 
 const eventTypeConfig = {
-  study: { color: 'bg-blue-100 text-blue-700', icon: BookOpen },
+  study: { color: 'bg-blue-900/20 text-blue-700', icon: BookOpen },
   rotation: { color: 'bg-green-100 text-green-700', icon: Stethoscope },
   exam: { color: 'bg-red-100 text-red-700', icon: GraduationCap },
-  other: { color: 'bg-gray-100 text-gray-700', icon: AlertCircle },
+  other: { color: 'bg-slate-800/50 text-gray-300', icon: AlertCircle },
 };
 
 export function Scheduling() {
@@ -164,8 +164,8 @@ export function Scheduling() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold text-gray-900">Study Schedule</h2>
-          <p className="text-gray-600">Organize your study sessions, rotations, and exams with AI-powered recommendations</p>
+          <h2 className="text-3xl font-bold text-white">Study Schedule</h2>
+          <p className="text-gray-400">Organize your study sessions, rotations, and exams with AI-powered recommendations</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -276,7 +276,7 @@ export function Scheduling() {
           </div>
         </Card>
 
-        <Card className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 border-2 border-purple-200">
+        <Card className="p-4 bg-gradient-to-r from-purple-50 to-purple-100 border border-blue-500/30">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-purple-600 flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-white" />
@@ -296,7 +296,7 @@ export function Scheduling() {
         <div className="lg:col-span-2 space-y-4">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-semibold text-gray-900">
+              <h3 className="text-xl font-semibold text-white">
                 Week of {weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
               </h3>
               <div className="flex gap-2">
@@ -335,14 +335,14 @@ export function Scheduling() {
                     className={`min-h-[120px] p-2 rounded-lg border-2 ${
                       isToday
                         ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 bg-white'
+                        : 'border-slate-700/50 bg-white'
                     }`}
                   >
                     <div className="text-center mb-2">
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-gray-400">
                         {date.toLocaleDateString('en-US', { weekday: 'short' })}
                       </div>
-                      <div className={`text-lg font-semibold ${isToday ? 'text-orange-600' : 'text-gray-900'}`}>
+                      <div className={`text-lg font-semibold ${isToday ? 'text-orange-600' : 'text-white'}`}>
                         {date.getDate()}
                       </div>
                     </div>
@@ -369,7 +369,7 @@ export function Scheduling() {
 
           {/* Event Type Legend */}
           <Card className="p-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Event Types</h4>
+            <h4 className="text-sm font-semibold text-white mb-3">Event Types</h4>
             <div className="flex flex-wrap gap-3">
               {Object.entries(eventTypeConfig).map(([type, config]) => (
                 <div key={type} className="flex items-center gap-2">
@@ -384,7 +384,7 @@ export function Scheduling() {
         {/* Upcoming Events Sidebar */}
         <div className="space-y-4">
           <Card className="p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Events</h3>
+            <h3 className="text-xl font-semibold text-white mb-4">Upcoming Events</h3>
             <div className="space-y-3">
               {upcomingEvents.length > 0 ? (
                 upcomingEvents.map((event) => {
@@ -392,18 +392,18 @@ export function Scheduling() {
                   const eventDate = new Date(`${event.date} ${event.time}`);
                   
                   return (
-                    <Card key={event.id} className="p-4 border-2 border-gray-100 hover:border-orange-200 transition-colors">
+                    <Card key={event.id} className="p-4 border-2 border-slate-700/50 hover:border-orange-200 transition-colors">
                       <div className="flex items-start gap-3">
                         <div className={`p-2 rounded-lg ${config.color}`}>
                           <config.icon className="w-4 h-4" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 truncate">{event.title}</h4>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                          <h4 className="font-semibold text-white truncate">{event.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
                             <Calendar className="w-3 h-3" />
                             <span>{eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <div className="flex items-center gap-2 text-sm text-gray-400">
                             <Clock className="w-3 h-3" />
                             <span>{event.time}</span>
                           </div>

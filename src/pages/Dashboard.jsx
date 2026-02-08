@@ -17,11 +17,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-900/40">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">MedEd Dashboard</h1>
+          <h1 className="text-2xl font-bold text-white">MedEd Dashboard</h1>
           <button
             onClick={handleLogout}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700"
@@ -34,10 +34,10 @@ const Dashboard = () => {
       {/* Main content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-xl font-semibold text-white mb-2">
             Welcome, {user?.email}!
           </h2>
-          <p className="text-gray-600">
+          <p className="text-gray-400">
             You are now logged in. This is your dashboard.
           </p>
         </div>
@@ -83,10 +83,10 @@ const Dashboard = () => {
               className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
             >
               <div className="text-4xl mb-4">{feature.icon}</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-white mb-2">
                 {feature.name}
               </h3>
-              <p className="text-gray-600 text-sm">{feature.description}</p>
+              <p className="text-gray-400 text-sm">{feature.description}</p>
               {feature.available ? (
                 <button
                   onClick={() => navigate(feature.route)}
@@ -95,7 +95,7 @@ const Dashboard = () => {
                   Open
                 </button>
               ) : (
-                <button className="mt-4 inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-600 cursor-not-allowed">
+                <button className="mt-4 inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 cursor-not-allowed">
                   Coming Soon
                 </button>
               )}

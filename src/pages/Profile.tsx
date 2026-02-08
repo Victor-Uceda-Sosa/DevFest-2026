@@ -68,13 +68,13 @@ export default function Profile() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-900/40">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Your Profile</h1>
-            <p className="mt-2 text-gray-600">{user?.email}</p>
+            <h1 className="text-3xl font-bold text-white">Your Profile</h1>
+            <p className="mt-2 text-gray-400">{user?.email}</p>
             <p className="text-sm text-gray-500">
               Member since {formatDate(user?.created_at || new Date().toISOString())}
             </p>
@@ -88,11 +88,11 @@ export default function Profile() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Sessions</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.totalSessions}</p>
+                <p className="text-sm text-gray-400">Total Sessions</p>
+                <p className="text-3xl font-bold text-white">{stats.totalSessions}</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Zap size={24} className="text-blue-600" />
+              <div className="p-3 bg-blue-900/20 rounded-lg">
+                <Zap size={24} className="text-cyan-400" />
               </div>
             </div>
           </div>
@@ -100,8 +100,8 @@ export default function Profile() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Completed</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.completedSessions}</p>
+                <p className="text-sm text-gray-400">Completed</p>
+                <p className="text-3xl font-bold text-white">{stats.completedSessions}</p>
               </div>
               <div className="p-3 bg-green-100 rounded-lg">
                 <TrendingUp size={24} className="text-green-600" />
@@ -112,11 +112,11 @@ export default function Profile() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg Duration</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.averageDuration}m</p>
+                <p className="text-sm text-gray-400">Avg Duration</p>
+                <p className="text-3xl font-bold text-white">{stats.averageDuration}m</p>
               </div>
               <div className="p-3 bg-purple-100 rounded-lg">
-                <Clock size={24} className="text-purple-600" />
+                <Clock size={24} className="text-purple-400" />
               </div>
             </div>
           </div>
@@ -124,8 +124,8 @@ export default function Profile() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg Empathy Score</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.averageEmpathy}</p>
+                <p className="text-sm text-gray-400">Avg Empathy Score</p>
+                <p className="text-3xl font-bold text-white">{stats.averageEmpathy}</p>
               </div>
               <div className="p-3 bg-orange-100 rounded-lg">
                 <Calendar size={24} className="text-orange-600" />
@@ -136,8 +136,8 @@ export default function Profile() {
 
         {/* Past Sessions Section */}
         <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200 px-6 py-4">
-            <h2 className="text-xl font-semibold text-gray-900">Past Consultation Sessions</h2>
+          <div className="border-b border-slate-700/50 px-6 py-4">
+            <h2 className="text-xl font-semibold text-white">Past Consultation Sessions</h2>
           </div>
 
           {loading ? (
@@ -156,7 +156,7 @@ export default function Profile() {
                     borderLeft: 'transparent',
                   }}
                 ></div>
-                <p className="mt-4 text-gray-600">Loading sessions...</p>
+                <p className="mt-4 text-gray-400">Loading sessions...</p>
               </div>
             </div>
           ) : error ? (
@@ -165,33 +165,33 @@ export default function Profile() {
             </div>
           ) : consultations.length === 0 ? (
             <div className="px-6 py-12 text-center">
-              <p className="text-gray-600 mb-4">No sessions yet. Start your first interview!</p>
+              <p className="text-gray-400 mb-4">No sessions yet. Start your first interview!</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Case</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Date</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Duration</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Scores</th>
+                  <tr className="bg-slate-900/40 border-b border-slate-700/50">
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Case</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Date</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Duration</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Status</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-white">Scores</th>
                   </tr>
                 </thead>
                 <tbody>
                   {consultations.map((consultation, index) => (
-                    <tr key={consultation.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <tr key={consultation.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-900/40'}>
                       <td className="px-6 py-4 text-sm">
                         <div>
-                          <p className="font-medium text-gray-900">{consultation.case_title}</p>
-                          <p className="text-xs text-gray-600">{consultation.case_id}</p>
+                          <p className="font-medium text-white">{consultation.case_title}</p>
+                          <p className="text-xs text-gray-400">{consultation.case_id}</p>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-gray-400">
                         {formatDate(consultation.created_at)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-gray-400">
                         {formatTime(consultation.duration_seconds)}
                       </td>
                       <td className="px-6 py-4 text-sm">
@@ -200,14 +200,14 @@ export default function Profile() {
                             consultation.status === 'completed'
                               ? 'bg-green-100 text-green-800'
                               : consultation.status === 'in_progress'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
+                              ? 'bg-blue-900/20 text-blue-800'
+                              : 'bg-slate-800/50 text-gray-800'
                           }`}
                         >
                           {consultation.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-gray-400">
                         {consultation.empathy_score || consultation.clarity_score || consultation.completeness_score ? (
                           <div className="space-y-1">
                             {consultation.empathy_score && (
