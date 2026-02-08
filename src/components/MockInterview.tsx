@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { User, Bot, Play, RotateCcw, CheckCircle2, AlertCircle, Sparkles, Square, Loader2, Mic, Send } from 'lucide-react';
@@ -37,10 +37,18 @@ export function MockInterview() {
   // Error state
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-scroll ref
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   // Load cases on component mount
   useEffect(() => {
     loadCases();
   }, []);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const loadCases = async () => {
     try {
@@ -188,16 +196,40 @@ export function MockInterview() {
       }
 
       const audio = new Audio(audioUrl);
-      audio.play();
-      setCurrentAudio(audio);
+      
+      // audio.play() returns a Promise
+      const playPromise = audio.play();
+      
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            console.log('✅ Audio playback started successfully');
+            setCurrentAudio(audio);
+          })
+          .catch((error) => {
+            console.error('❌ Audio playback failed:', error);
+            // This can happen due to browser autoplay policies
+            // User may need to interact with the page first
+            if (error.name === 'NotAllowedError') {
+              console.warn('Autoplay blocked by browser. User interaction required.');
+              setError('Audio playback blocked. Click the play button to hear the response.');
+            }
+          });
+      }
 
-      audio.onended = () => setCurrentAudio(null);
+      audio.onended = () => {
+        console.log('🏁 Audio playback ended');
+        setCurrentAudio(null);
+      };
+      
       audio.onerror = (e) => {
         console.error('Error playing audio:', e);
+        setError('Failed to play audio response. The audio file may be corrupted.');
         setCurrentAudio(null);
       };
     } catch (err) {
-      console.error('Failed to play audio:', err);
+      console.error('Failed to initialize audio:', err);
+      setError('Failed to play audio response.');
     }
   };
 
@@ -392,6 +424,7 @@ export function MockInterview() {
               )}
             </div>
           ))}
+          <div ref={messagesEndRef} />
         </div>
 
         {!isComplete && (

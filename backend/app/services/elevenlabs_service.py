@@ -1,23 +1,24 @@
 import httpx
-import assemblyai as aai
 from app.config import get_settings
-import io
 
 settings = get_settings()
-aai.settings.api_key = settings.assemblyai_api_key
 
 
 class ElevenLabsService:
-    """Service for interacting with ElevenLabs API and transcription"""
+    """Service for interacting with ElevenLabs API and Groq Whisper transcription"""
 
     def __init__(self):
         self.api_key = settings.elevenlabs_api_key
         self.base_url = "https://api.elevenlabs.io"
         self.headers = {"xi-api-key": self.api_key}
+        
+        # Groq for fast Whisper transcription
+        self.groq_api_key = settings.groq_api_key
+        self.groq_base_url = "https://api.groq.com/openai/v1"
 
     async def transcribe_audio(self, audio_data: bytes) -> dict:
         """
-        Transcribe audio file using AssemblyAI API
+        Transcribe audio file using Groq Whisper API (much faster than AssemblyAI)
 
         Args:
             audio_data: Raw audio bytes (webm format)
@@ -26,52 +27,66 @@ class ElevenLabsService:
             Dictionary with transcription result
         """
         try:
-            print(f"🎤 AssemblyAI Transcription Starting...")
+            print(f"🎤 Groq Whisper Transcription Starting...")
             print(f"   Audio size: {len(audio_data)} bytes")
             
-            # Create transcriber with universal-3-pro model
-            transcriber = aai.Transcriber()
-
-            # AssemblyAI expects file path or URL, so we'll upload the audio
-            # Convert bytes to file-like object
-            audio_file = io.BytesIO(audio_data)
-
-            # Configure transcription with speech models (list)
-            config = aai.TranscriptionConfig(speech_models=["universal-2"])
-
-            # Transcribe using AssemblyAI
-            print(f"   Sending to AssemblyAI...")
-            transcript = transcriber.transcribe(audio_file, config=config)
+            # Prepare multipart form data for Groq API
+            files = {
+                "file": ("audio.webm", audio_data, "audio/webm")
+            }
+            data = {
+                "model": "whisper-large-v3",  # Fastest and most accurate Whisper model
+                "temperature": 0.0,
+                "language": "en"
+            }
             
-            print(f"   AssemblyAI response received")
-            print(f"   Status: {transcript.status}")
-            print(f"   Text: '{transcript.text}'")
-            print(f"   Text length: {len(transcript.text) if transcript.text else 0}")
-            print(f"   Confidence: {transcript.confidence if hasattr(transcript, 'confidence') else 'N/A'}")
-            print(f"   Audio duration: {transcript.audio_duration if hasattr(transcript, 'audio_duration') else 'N/A'}s")
+            print(f"   Sending to Groq Whisper API...")
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{self.groq_base_url}/audio/transcriptions",
+                    headers={
+                        "Authorization": f"Bearer {self.groq_api_key}"
+                    },
+                    files=files,
+                    data=data,
+                    timeout=10.0
+                )
+                
+                print(f"   Groq response status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    error_text = response.text
+                    print(f"   ✗ Groq API error: {error_text}")
+                    return {
+                        "success": False,
+                        "error": f"Groq API error: {error_text}",
+                    }
+                
+                result = response.json()
+                transcript_text = result.get("text", "")
+                
+                print(f"   ✓ Transcription successful")
+                print(f"   📝 Transcript: {transcript_text[:100]}..." if len(transcript_text) > 100 else f"   📝 Transcript: {transcript_text}")
+                print(f"   Text length: {len(transcript_text)} characters")
+                
+                if not transcript_text or transcript_text.strip() == "":
+                    print(f"   ⚠️  Warning: Transcription completed but text is empty")
+                    return {
+                        "success": False,
+                        "error": "No speech detected in audio. Please try recording again."
+                    }
 
-            if transcript.status == aai.TranscriptStatus.error:
-                print(f"   ✗ Transcription error: {transcript.error}")
                 return {
-                    "success": False,
-                    "error": transcript.error,
+                    "transcript": transcript_text,
+                    "success": True,
+                    "duration_seconds": result.get("duration", 0),
                 }
-            
-            # Check if text is None or empty
-            transcript_text = transcript.text if transcript.text else ""
-            
-            if not transcript_text or transcript_text.strip() == "":
-                print(f"   ⚠️  Warning: Transcription completed but text is empty")
-                print(f"   This usually means:")
-                print(f"      - Audio was too short (< 0.5 seconds)")
-                print(f"      - No speech detected in audio")
-                print(f"      - Audio volume too low")
-                print(f"      - Background noise only")
-
+                
+        except httpx.TimeoutException as e:
+            print(f"   ✗ Transcription timeout: {str(e)}")
             return {
-                "transcript": transcript_text,
-                "success": True,
-                "duration_seconds": transcript.audio_duration if hasattr(transcript, 'audio_duration') else 0,
+                "success": False,
+                "error": "Transcription timeout. Please try again.",
             }
         except Exception as e:
             print(f"   ✗ Transcription exception: {type(e).__name__}: {e}")

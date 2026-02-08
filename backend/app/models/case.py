@@ -10,6 +10,7 @@ class CaseBase(BaseModel):
     chief_complaint: str
     clinical_scenario: Dict[str, Any]
     differential_diagnoses: Dict[str, Any]
+    correct_diagnosis: Optional[str] = None  # The correct/primary diagnosis for evaluation
     red_flags: list[str]
     learning_objectives: list[str]
 

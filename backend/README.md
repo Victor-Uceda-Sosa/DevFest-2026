@@ -6,6 +6,7 @@ FastAPI backend for K2 Think - An AI-powered clinical reasoning tutor for medica
 
 - Voice-based clinical reasoning sessions using ElevenLabs
 - Kimi K2 Thinking (Moonshot AI) for Socratic questioning and clinical reasoning
+- Fast audio transcription using Groq Whisper API (typically < 1 second)
 - Supabase for data persistence (cases, sessions, interactions)
 - Request-response conversation pattern
 
@@ -46,8 +47,9 @@ uvicorn app.main:app --reload --port 8000
 ## Architecture
 
 The backend integrates:
-- **Moonshot AI (Kimi K2 Thinking)**: Deep reasoning for clinical education
-- **ElevenLabs**: Speech-to-text and text-to-speech
+- **Moonshot AI (Kimi K2.5)**: Deep reasoning for clinical education (patient roleplay mode)
+- **Groq Whisper**: Ultra-fast speech-to-text transcription (< 1 second)
+- **ElevenLabs**: High-quality text-to-speech for patient voice responses
 - **Supabase**: PostgreSQL database and file storage
 
 ## Development

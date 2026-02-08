@@ -182,16 +182,57 @@ async def interact(
             import re
             settings = get_settings()
             
-            # Clean the response text for TTS
-            # Remove XML tags like <think>...</think> that K2 includes
+            # Clean the response text for TTS - AGGRESSIVE CLEANING
             clean_text = tutor_response
             print(f"   Original text length: {len(clean_text)} chars")
+            print(f"   Original text preview: {clean_text[:300]}..." if len(clean_text) > 300 else f"   Original text: {clean_text}")
             
             # Remove <think> blocks (K2 reasoning tags)
             clean_text = re.sub(r'<think>.*?</think>', '', clean_text, flags=re.DOTALL)
             
             # Remove any other XML-like tags
             clean_text = re.sub(r'<[^>]+>', '', clean_text)
+            
+            # AGGRESSIVE: Remove thinking patterns that aren't in tags
+            thinking_patterns = [
+                r'The user is asking.*?(?:I need to respond|I should|need to)',
+                r'I need to.*?(?:as the patient|based on|respond)',
+                r'From the case information:.*?(?:For the|I should)',
+                r'Actually, looking.*?(?:instructions|case information)',
+                r'But wait.*?(?:case|doesn\'t|specify)',
+                r'Looking at.*?(?:case|information|instructions)',
+                r'According to.*?(?:case|instructions)',
+                r'Since.*?(?:case|information).*?I should',
+                r'Given.*?(?:severity|case).*?(?:reasonable|should)',
+                r'Better to.*?(?:stick|say|mention)',
+                r'Strictly following.*?instructions',
+                # Remove analysis of multiple questions
+                r'\d+\.\s*"[^"]*"\s*\d+\.',
+                # Remove bullet points about what to mention
+                r'- Symptoms:.*?$',
+                r'- Vitals:.*?$',
+                r'- History:.*?$',
+                r'- Relevant.*?:.*?$',
+                # Remove meta-analysis paragraphs
+                r'For the first question.*?(?:\n\n|\Z)',
+                r'For the second question.*?(?:\n\n|\Z)',
+            ]
+            
+            for pattern in thinking_patterns:
+                clean_text = re.sub(pattern, '', clean_text, flags=re.DOTALL | re.IGNORECASE | re.MULTILINE)
+            
+            # If response has multiple paragraphs and first looks like thinking, remove it
+            paragraphs = [p.strip() for p in clean_text.split('\n\n') if p.strip()]
+            if len(paragraphs) > 1:
+                first_para_lower = paragraphs[0].lower()
+                thinking_keywords = ['question', 'asking', 'need to', 'should mention', 'case information', 
+                                    'from the case', 'looking at', 'according to', 'user is']
+                if any(keyword in first_para_lower for keyword in thinking_keywords):
+                    print(f"   Removing thinking paragraph: {paragraphs[0][:100]}...")
+                    paragraphs = paragraphs[1:]
+            
+            # Rejoin cleaned paragraphs
+            clean_text = ' '.join(paragraphs)
             
             # Trim whitespace and normalize
             clean_text = clean_text.strip()
@@ -204,7 +245,7 @@ async def interact(
             
             if not clean_text:
                 print(f"   ⚠️  Warning: Cleaned text is empty, skipping TTS")
-                raise ValueError("Cleaned text is empty after removing XML tags")
+                raise ValueError("Cleaned text is empty after removing thinking text")
             
             # Validate text length (ElevenLabs limit is ~5000 chars)
             if len(clean_text) > 5000:
@@ -250,13 +291,40 @@ async def interact(
             print(f"   ⚠️  Warning: Failed to save interaction: {str(e)}")
             # Continue even if save fails
         
-        # Clean response for frontend display (remove XML tags like <think>)
+        # Clean response for frontend display (remove XML tags and thinking text)
         print("🧹 Step 11: Cleaning response for display...")
         display_response = tutor_response
+        
         # Remove <think> tags and content (K2 reasoning blocks)
         display_response = re.sub(r'<think>.*?</think>', '', display_response, flags=re.DOTALL)
+        
         # Remove any other XML-like tags
         display_response = re.sub(r'<[^>]+>', '', display_response)
+        
+        # Remove thinking patterns
+        thinking_patterns = [
+            r'The user is asking.*?(?:I need to respond|I should|need to)',
+            r'I need to.*?(?:as the patient|based on|respond)',
+            r'From the case information:.*?(?:For the|I should)',
+            r'Actually, looking.*?(?:instructions|case information)',
+            r'But wait.*?(?:case|doesn\'t|specify)',
+            r'For the first question.*?(?:\n\n|\Z)',
+            r'For the second question.*?(?:\n\n|\Z)',
+        ]
+        
+        for pattern in thinking_patterns:
+            display_response = re.sub(pattern, '', display_response, flags=re.DOTALL | re.IGNORECASE | re.MULTILINE)
+        
+        # Remove thinking paragraphs
+        paragraphs = [p.strip() for p in display_response.split('\n\n') if p.strip()]
+        if len(paragraphs) > 1:
+            first_para_lower = paragraphs[0].lower()
+            thinking_keywords = ['question', 'asking', 'need to', 'should mention', 'case information']
+            if any(keyword in first_para_lower for keyword in thinking_keywords):
+                paragraphs = paragraphs[1:]
+        
+        display_response = ' '.join(paragraphs)
+        
         # Normalize whitespace
         display_response = re.sub(r'\s+', ' ', display_response).strip()
         

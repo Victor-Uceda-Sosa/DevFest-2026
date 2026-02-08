@@ -16,9 +16,11 @@ class SupabaseService:
     
     def __init__(self):
         """Initialize Supabase client."""
+        # Use service role key for backend operations (bypasses RLS for storage uploads)
+        api_key = settings.supabase_service_key if settings.supabase_service_key else settings.supabase_key
         self.client: Client = create_client(
             settings.supabase_url,
-            settings.supabase_key
+            api_key
         )
     
     # ========== Case Operations ==========

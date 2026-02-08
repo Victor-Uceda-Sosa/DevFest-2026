@@ -118,7 +118,8 @@ class KimiService:
         conversation_history: List[Dict[str, str]]
     ) -> Dict[str, Any]:
         """
-        Analyze student's clinical reasoning and generate Socratic response.
+        Analyze student's clinical reasoning and generate response.
+        Switches between patient roleplay mode and evaluation mode based on input.
         
         Args:
             student_input: Student's response or question
@@ -129,39 +130,214 @@ class KimiService:
             Dictionary with tutor response and reasoning metadata
         """
         from app.utils.prompt_templates import (
-    format_system_prompt,
-    format_patient_prompt,
-    format_interaction_prompt
-)
-        
-        # Use PATIENT prompt instead of tutor prompt for patient roleplay mode
-        system_prompt = format_patient_prompt(
-            case_description=str(case_context.get("clinical_scenario", {})),
-            chief_complaint=case_context.get("chief_complaint", "")
+            format_patient_prompt,
+            format_evaluation_prompt
         )
         
-        # For patient mode, pass student's question directly (no complex analysis)
-        user_message = student_input
+        # Detect if student is making a diagnosis
+        diagnosis_keywords = [
+            'i think you have', 
+            'i believe you have', 
+            'my diagnosis is',
+            'you have',
+            'it sounds like you have',
+            'this could be',
+            'you might have',
+            'diagnosed with',
+            'looks like'
+        ]
         
-        # Query Kimi K2.5 via Featherless
-        result = await self.query_k2_thinking(
-            system_prompt=system_prompt,
-            user_message=user_message,
-            conversation_history=conversation_history[:-1] if len(conversation_history) > 0 else None,
-            temperature=0.8,  # Slightly higher for more natural patient responses
-            max_tokens=500  # Shorter limit for patient responses
-        )
+        student_input_lower = student_input.lower()
+        is_making_diagnosis = any(keyword in student_input_lower for keyword in diagnosis_keywords)
+        
+        print(f"   🔍 Diagnosis detection: {is_making_diagnosis}")
+        
+        if is_making_diagnosis:
+            # EVALUATION MODE: Student is making a diagnosis
+            print(f"   📊 Switching to EVALUATION mode")
+            
+            # Format conversation history
+            history_text = self._format_history(conversation_history)
+            
+            # Get correct diagnosis from case context (or use first differential)
+            correct_diagnosis = case_context.get("correct_diagnosis")
+            if not correct_diagnosis:
+                # Fallback: use first differential diagnosis as correct one
+                diff_diag = case_context.get("differential_diagnoses", {})
+                if isinstance(diff_diag, dict) and diff_diag:
+                    correct_diagnosis = list(diff_diag.keys())[0]
+                else:
+                    correct_diagnosis = "unknown"
+            
+            system_prompt = format_evaluation_prompt(
+                student_diagnosis=student_input,
+                correct_diagnosis=correct_diagnosis,
+                differential_diagnoses=case_context.get("differential_diagnoses", {}),
+                red_flags=case_context.get("red_flags", []),
+                conversation_history=history_text
+            )
+            
+            # Use higher token limit for evaluation feedback
+            result = await self.query_k2_thinking(
+                system_prompt=system_prompt,
+                user_message="Evaluate this diagnosis based on the conversation.",
+                conversation_history=None,  # Already included in system prompt
+                temperature=0.7,
+                max_tokens=300  # More tokens for evaluation feedback
+            )
+            
+            cleaned_text = result["response"].strip()
+            
+        else:
+            # PATIENT MODE: Normal patient roleplay
+            print(f"   👤 Using PATIENT mode")
+            
+            system_prompt = format_patient_prompt(
+                case_description=str(case_context.get("clinical_scenario", {})),
+                chief_complaint=case_context.get("chief_complaint", "")
+            )
+            
+            # For patient mode, pass student's question directly
+            user_message = student_input
+            
+            # Query Kimi K2.5 via Featherless
+            result = await self.query_k2_thinking(
+                system_prompt=system_prompt,
+                user_message=user_message,
+                conversation_history=conversation_history[:-1] if len(conversation_history) > 0 else None,
+                temperature=0.8,
+                max_tokens=150  # Shorter for concise patient responses
+            )
+            
+            # Post-process response to remove any thinking text
+            response_text = result["response"]
+            cleaned_text = self._clean_thinking_text(response_text)
+            
+            # Fallback if cleaning failed
+            if not cleaned_text or len(cleaned_text) < 10:
+                print(f"   ⚠️  Response too short after cleaning, generating fallback")
+                chief_complaint = case_context.get("chief_complaint", "not feeling well")
+                cleaned_text = f"I've been having {chief_complaint.lower()}."
+            
+            # Verify no thinking keywords remain
+            thinking_check = ['user is', 'i should', 'i need to', 'mention', 'case information', 'respond naturally']
+            if any(keyword in cleaned_text.lower() for keyword in thinking_check):
+                print(f"   ⚠️  Thinking keywords still present, using fallback")
+                chief_complaint = case_context.get("chief_complaint", "not feeling well")
+                cleaned_text = f"I've been having {chief_complaint.lower()}."
         
         # Extract reasoning metadata
         reasoning_metadata = {
             "thinking_process": result.get("thinking_process", ""),
-            "tokens_used": result.get("usage", {})
+            "tokens_used": result.get("usage", {}),
+            "mode": "evaluation" if is_making_diagnosis else "patient"
         }
         
         return {
-            "tutor_response": result["response"],
+            "tutor_response": cleaned_text,
             "reasoning_metadata": reasoning_metadata
         }
+    
+    def _clean_thinking_text(self, text: str) -> str:
+        """
+        Remove any thinking text or meta-commentary that leaked into the response.
+        Uses aggressive extraction to get ONLY patient dialogue.
+        
+        Args:
+            text: Raw response from AI
+            
+        Returns:
+            Cleaned response with only patient dialogue
+        """
+        import re
+        
+        original_text = text
+        
+        # Strategy 1: If there are quotes, extract the quoted text (likely the actual patient response)
+        quote_pattern = r'["""](.*?)["""]'
+        quotes = re.findall(quote_pattern, text, flags=re.DOTALL)
+        if quotes:
+            # Find the longest quote (likely the actual response, not example quotes)
+            longest_quote = max(quotes, key=len) if quotes else ""
+            if longest_quote and len(longest_quote) > 10:  # Reasonable patient response
+                print(f"   🎯 Extracted quoted dialogue: {longest_quote[:100]}...")
+                return longest_quote.strip()
+        
+        # Strategy 2: Remove ALL thinking patterns aggressively
+        thinking_patterns = [
+            # Meta-analysis
+            r'The user is .*?(?:\.|$)',
+            r'As the patient.*?(?:\.|$)',
+            r'I need to.*?(?:\.|$)',
+            r'I should.*?(?:\.|$)',
+            r'From the case.*?(?:\.|$)',
+            r'mention .*?(?:\.|$)',
+            r'Keep it .*?(?:\.|$)',
+            r'Response should.*?(?:\.|$)',
+            r'This is just.*?(?:\.|$)',
+            r'Actually.*?(?:\.|$)',
+            r'But wait.*?(?:\.|$)',
+            r'Looking at.*?(?:\.|$)',
+            r'According to.*?(?:\.|$)',
+            r'Given.*?(?:\.|$)',
+            r'Better to.*?(?:\.|$)',
+            r'Strictly following.*?(?:\.|$)',
+            # Remove XML tags
+            r'<think>.*?</think>',
+            r'<[^>]+>',
+            # Remove instructional phrases
+            r'sound like.*?(?:\.|$)',
+            r'be brief.*?(?:\.|$)',
+            r'in character.*?(?:\.|$)',
+            r'natural.*?(?:\.|$)',
+        ]
+        
+        cleaned = text
+        for pattern in thinking_patterns:
+            cleaned = re.sub(pattern, '', cleaned, flags=re.DOTALL | re.IGNORECASE | re.MULTILINE)
+        
+        # Strategy 3: Look for sentences that start with "I" (patient speaking)
+        # and don't contain meta-keywords
+        sentences = [s.strip() for s in re.split(r'[.!?]', cleaned) if s.strip()]
+        meta_keywords = ['user', 'mention', 'should', 'need to', 'case', 'information', 
+                        'patient', 'respond', 'character', 'brief', 'natural']
+        
+        patient_sentences = []
+        for sentence in sentences:
+            sentence_lower = sentence.lower()
+            # Keep sentences that don't have meta-keywords
+            has_meta = any(keyword in sentence_lower for keyword in meta_keywords)
+            if not has_meta and len(sentence) > 5:
+                patient_sentences.append(sentence)
+        
+        if patient_sentences:
+            result = '. '.join(patient_sentences)
+            if result and len(result) > 10:
+                print(f"   🎯 Extracted patient sentences: {result[:100]}...")
+                return result.strip() + '.'
+        
+        # Strategy 4: If we still have text, try to extract anything after thinking
+        # Look for patterns like "...[thinking]... 'Hey, I'm here because...'"
+        if cleaned:
+            # Split by newlines and take the last substantial line
+            lines = [l.strip() for l in cleaned.split('\n') if l.strip()]
+            if lines:
+                last_line = lines[-1]
+                if len(last_line) > 10 and not any(kw in last_line.lower() for kw in meta_keywords):
+                    print(f"   🎯 Using last line as patient response: {last_line[:100]}...")
+                    return last_line.strip()
+        
+        # Fallback: clean whitespace
+        cleaned = re.sub(r'\n\s*\n', '\n', cleaned)
+        cleaned = cleaned.strip()
+        
+        # If everything was removed, return a default response
+        if not cleaned or len(cleaned) < 5:
+            print(f"   ⚠️  All text was filtered out, using fallback response")
+            return "I'm not feeling well."
+        
+        print(f"   ⚠️  Could not extract clean dialogue, returning cleaned version")
+        return cleaned
     
     def _format_history(self, conversation_history: List[Dict[str, str]]) -> str:
         """Format conversation history for context."""

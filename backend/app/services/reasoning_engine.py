@@ -89,7 +89,8 @@ class ReasoningEngine:
             "clinical_scenario": case.clinical_scenario,
             "chief_complaint": case.chief_complaint,
             "differential_diagnoses": case.differential_diagnoses,
-            "red_flags": case.red_flags
+            "red_flags": case.red_flags,
+            "correct_diagnosis": case.correct_diagnosis if hasattr(case, 'correct_diagnosis') else None
         }
         
         # Use Kimi to analyze and respond

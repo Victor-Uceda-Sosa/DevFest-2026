@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     featherless_api_base: str = "https://api.featherless.ai/v1"
     featherless_model: str = "moonshotai/Kimi-K2.5"
     
-    # ElevenLabs & AssemblyAI
+    # ElevenLabs & Groq (Whisper)
     elevenlabs_api_key: str
     elevenlabs_voice_id: str
-    assemblyai_api_key: str
+    groq_api_key: str  # For Whisper transcription
     
     # Supabase
     supabase_url: str
