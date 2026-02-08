@@ -9,8 +9,7 @@ const ConsultationInterface = () => {
   const [selectedCase, setSelectedCase] = useState(null);
   const [consultation, setConsultation] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [transcript, setTranscript] = useState(null);
+  const [transcript, setTranscript] = useState('');
 
   // Fetch available cases
   useEffect(() => {
@@ -48,38 +47,14 @@ const ConsultationInterface = () => {
     }
   };
 
-  const handleRecordingComplete = async (audioBlob, duration) => {
-    if (!consultation) {
-      console.warn('No active consultation');
-      return;
-    }
+  const handleTranscriptUpdate = (newText) => {
+    // Update transcript in real-time as it streams from ElevenLabs
+    setTranscript((prev) => prev + ' ' + newText);
+  };
 
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', audioBlob, 'recording.webm');
-
-      const response = await api.post(
-        `/api/consultations/${consultation.id}/audio`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      console.log('Response:', response.data);
-      const transcriptText = response.data.transcript || 'No transcript returned';
-      console.log('Transcript:', transcriptText);
-      setTranscript(transcriptText);
-      setUploading(false);
-      console.log('Audio uploaded and transcribed!');
-    } catch (error) {
-      console.error('Failed to upload audio');
-      console.error(error);
-      setUploading(false);
-    }
+  const handleInterviewComplete = () => {
+    // Called when user stops the interview
+    console.log('Interview complete with transcript:', transcript);
   };
 
   const handleNewConsultation = () => {
@@ -133,77 +108,58 @@ const ConsultationInterface = () => {
       )}
 
       {/* Active Consultation */}
-      {consultation && !transcript && (
+      {consultation && (
         <div className="bg-white rounded-lg shadow p-6">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900">
               {consultation.case_title}
             </h2>
             <p className="text-gray-600 mt-2">
-              Click below to start recording your patient interview.
+              Click below to start your patient interview. Your speech will be transcribed in real-time.
             </p>
           </div>
 
           <VoiceRecorder
-            onRecordingComplete={handleRecordingComplete}
+            onTranscriptUpdate={handleTranscriptUpdate}
+            consultationId={consultation.id}
           />
 
-          {uploading && (
-            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-              <p className="text-blue-800 text-center">
-                Uploading and transcribing audio...
-              </p>
+          {transcript && (
+            <div className="mt-6 space-y-4">
+              <div className="bg-green-50 border-l-4 border-green-600 p-4">
+                <h3 className="text-lg font-semibold text-green-800">
+                  ✓ Interview Transcript
+                </h3>
+                <p className="text-green-700 text-sm mt-1">
+                  Real-time transcription of your interview
+                </p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                <p className="text-gray-800 whitespace-pre-wrap text-sm">
+                  {transcript}
+                </p>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={handleNewConsultation}
+                  className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+                >
+                  New Consultation
+                </button>
+                <button
+                  onClick={() => {
+                    console.log('Feedback generation coming soon!');
+                  }}
+                  className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                >
+                  Generate Feedback
+                </button>
+              </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* Transcript Display */}
-      {transcript ? (
-        <>
-          {console.log('SHOWING TRANSCRIPT SECTION')}
-          <div className="space-y-4">
-          <div className="bg-green-50 border-l-4 border-green-600 p-4">
-            <h3 className="text-lg font-semibold text-green-800">
-              ✓ Transcription Complete
-            </h3>
-            <p className="text-green-700 text-sm mt-1">
-              Your interview has been transcribed successfully.
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">
-              Interview Transcript
-            </h3>
-            <div className="bg-gray-50 p-4 rounded-lg max-h-96 overflow-y-auto">
-              <p className="text-gray-800 whitespace-pre-wrap text-sm">
-                {transcript}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={handleNewConsultation}
-              className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
-            >
-              New Consultation
-            </button>
-            <button
-              onClick={() => {
-                // TODO: Generate feedback in next phase
-                console.log('Feedback generation coming soon!');
-              }}
-              className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-            >
-              Generate Feedback
-            </button>
-          </div>
-        </div>
-        </>
-      ) : (
-        console.log('TRANSCRIPT NOT SET')
       )}
     </div>
   );
