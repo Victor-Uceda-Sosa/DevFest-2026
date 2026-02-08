@@ -21,7 +21,6 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -35,33 +34,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Initialize auth state
   useEffect(() => {
-    let isMounted = true;
-
     const initAuth = async () => {
       try {
-        // First, try to get the current session (from localStorage)
-        const session = await authService.getCurrentSession();
-        if (session) {
-          // Session exists, get the user data
-          const currentUser = await authService.getCurrentUser();
-          if (isMounted) {
-            setUser(currentUser as User);
-          }
-        } else {
-          // No session found
-          if (isMounted) {
-            setUser(null);
-          }
-        }
+        const currentUser = await authService.getCurrentUser();
+        setUser(currentUser as User);
       } catch (error) {
-        console.error('Error during auth initialization:', error);
-        if (isMounted) {
-          setUser(null);
-        }
+        setUser(null);
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
 
@@ -69,13 +49,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Listen for auth changes
     const subscription = authService.onAuthStateChange((currentUser) => {
-      if (isMounted) {
-        setUser(currentUser as User);
-      }
+      setUser(currentUser as User);
     });
 
     return () => {
-      isMounted = false;
       subscription?.unsubscribe();
     };
   }, []);
@@ -84,17 +61,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoading(true);
     try {
       await authService.login(email, password);
-      // Wait a moment for the session to be established
-      await new Promise(resolve => setTimeout(resolve, 100));
       const currentUser = await authService.getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser as User);
-      } else {
-        throw new Error('Failed to get user after login');
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+      setUser(currentUser as User);
     } finally {
       setLoading(false);
     }
@@ -123,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
