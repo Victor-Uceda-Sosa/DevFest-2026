@@ -53,8 +53,8 @@ export function Home({ onNavigate }: HomeProps) {
       </div>
 
       {/* Featured Interview Section */}
-      <Card className="p-8 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer max-w-2xl mx-auto w-full" onClick={() => onNavigate('interview')}>
-        <div className="flex flex-col items-center justify-center space-y-4">
+      <Card className="p-12 border border-blue-500/30 bg-slate-900/40 hover:border-blue-500/50 transition-all duration-300 cursor-pointer max-w-2xl mx-auto w-full" onClick={() => onNavigate('interview')}>
+        <div className="flex flex-col items-center justify-center space-y-5">
           <div className="p-3 rounded-full bg-cyan-500/20 flex items-center justify-center">
             <Stethoscope className="w-8 h-8 text-cyan-400" />
           </div>
@@ -74,10 +74,10 @@ export function Home({ onNavigate }: HomeProps) {
         {features.map((feature) => (
           <Card
             key={feature.id}
-            className="p-5 hover:border-blue-500/50 transition-all duration-300 cursor-pointer border border-slate-700/50 bg-slate-900/30"
+            className="p-6 hover:border-blue-500/50 transition-all duration-300 cursor-pointer border border-slate-700/50 bg-slate-900/30"
             onClick={() => onNavigate(feature.id as any)}
           >
-            <div className="flex flex-col items-center justify-center text-center space-y-3">
+            <div className="flex flex-col items-center justify-center text-center space-y-4">
               <div className="p-2.5 rounded-lg bg-cyan-500/15 flex-shrink-0">
                 <feature.icon className="w-5 h-5 text-cyan-400" />
               </div>
