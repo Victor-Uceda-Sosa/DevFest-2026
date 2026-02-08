@@ -451,12 +451,22 @@ class ReasoningEngine:
         """
         Extract ONLY patient dialogue from K2's response.
         Stop at ANY meta-commentary or analysis.
+        Filter out filler responses like "I'm thinking" or "Hmm".
         """
         import re
 
         # Remove everything after <think> tags
         response = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL)
         response = response.strip()
+
+        # Remove common filler prefixes that don't add value
+        filler_patterns = [
+            r'^(?:I\'m thinking|I\'m thinking\.\.\.|Hmm|Hmm\.|Um\.|Let me think|Thinking\.|Well\.|So\.|Okay\.|Alright\.?)\s*',
+            r'^(?:The patient would say|As a patient|The patient says|I would say)\s*',
+        ]
+
+        for pattern in filler_patterns:
+            response = re.sub(pattern, '', response, flags=re.IGNORECASE)
 
         # List of all patterns that indicate analysis/meta-commentary (stop here)
         stop_patterns = [
@@ -487,18 +497,21 @@ class ReasoningEngine:
         result = []
         for sent in sentences[:6]:
             sent = sent.strip()
-            if not sent or len(sent) < 3:
+            if not sent or len(sent) < 5:  # Increased minimum from 3 to 5 chars
                 continue
             # Skip if it's clearly not patient dialogue
             if any(marker in sent.lower() for marker in ['year-old', 'presents', 'chief complaint', 'differential']):
+                continue
+            # Skip obvious filler
+            if sent.lower() in ['hmm', 'um', 'yeah', 'well', 'so', 'okay', 'alright', 'i\'m not sure', 'i don\'t know']:
                 continue
             result.append(sent)
 
         final_response = ' '.join(result).strip()
 
-        # Ensure we have something
-        if not final_response:
-            final_response = "Um, I'm not sure..."
+        # If response is empty or just filler, try to extract something useful
+        if not final_response or len(final_response) < 10:
+            final_response = "I'm experiencing the symptoms I mentioned - it's been going on for a few days now."
 
         return final_response
 
