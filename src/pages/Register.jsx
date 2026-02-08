@@ -11,7 +11,7 @@ const Register = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,9 +31,15 @@ const Register = () => {
     setLoading(true);
 
     try {
+      // Register the account
       await register(email, password);
-      setSuccess('Registration successful! Please check your email to verify your account.');
-      setTimeout(() => navigate('/login'), 2000);
+      setSuccess('✓ Account created successfully! Logging you in...');
+
+      // Automatically login
+      await login(email, password);
+
+      // Redirect to dashboard
+      navigate('/dashboard');
     } catch (err) {
       setError(err?.message || 'Registration failed');
     } finally {
